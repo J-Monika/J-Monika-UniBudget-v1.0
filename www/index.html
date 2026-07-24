@@ -650,24 +650,37 @@
   var state = null;          // active user's budget data
   var currentUser = null;    // { email, name }
 
-  function id(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+  function id(){ return "m-" + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
   function dataKey(email){ return "unibudget:data:" + email.toLowerCase(); }
+  function now(){ return Date.now(); }
 
   function seedState() {
-    // First-run demo data matching the original design
-    return {
-      currency: "PHP",
-      limits: Object.assign({}, DEFAULT_LIMITS),
-      txns: [
-        { id: id(), desc:"Bank", amount:1700, type:"income", cat:"Other", ts: Date.now()-86400000 },
-        { id: id(), desc:"Gcash", amount:800, type:"income", cat:"Allowance & Aid", ts: Date.now()-43200000 }
-      ]
-    };
+    // Demo data only in offline device-mode; cloud accounts start clean so demo
+    // rows never sync to Supabase.
+    var demo = (!window.Cloud || !Cloud.enabled) ? [
+      { id: id(), desc:"Bank", amount:1700, type:"income", cat:"Other", ts: now()-86400000, updated_at: now()-86400000, deleted:false },
+      { id: id(), desc:"Gcash", amount:800, type:"income", cat:"Allowance & Aid", ts: now()-43200000, updated_at: now()-43200000, deleted:false }
+    ] : [];
+    return { currency: "PHP", limits: Object.assign({}, DEFAULT_LIMITS), txns: demo };
+  }
+  // Backfill fields on data saved by older versions so sync stays consistent.
+  function normalizeState(s) {
+    if (!s || typeof s !== "object") return seedState();
+    if (!s.currency) s.currency = "PHP";
+    if (!s.limits || !Object.keys(s.limits).length) s.limits = Object.assign({}, DEFAULT_LIMITS);
+    if (!Array.isArray(s.txns)) s.txns = [];
+    s.txns.forEach(function(t){
+      if (!t.id) t.id = id();
+      if (typeof t.ts !== "number") t.ts = now();
+      if (typeof t.updated_at !== "number") t.updated_at = t.ts;
+      if (typeof t.deleted !== "boolean") t.deleted = false;
+    });
+    return s;
   }
   function loadState() {
     try {
       var raw = localStorage.getItem(dataKey(currentUser.email));
-      if (raw) return JSON.parse(raw);
+      if (raw) return normalizeState(JSON.parse(raw));
     } catch (e) {}
     return seedState();
   }
@@ -676,7 +689,8 @@
     if (!currentUser) return;
     localStorage.setItem(dataKey(currentUser.email), JSON.stringify(state));
     setDirty(false);
-    if (window.Cloud && Cloud.push) Cloud.push(state); // no-op in device mode
+    // Per-row cloud sync with offline outbox (no-op in device mode)
+    if (window.Cloud && Cloud.pushState) Cloud.pushState(state);
   }
   function setDirty(v){
     dirty = v;
@@ -704,9 +718,10 @@
   var typeVal = "expense";
 
   // ---------- Render ----------
+  function activeTxns(){ return state.txns.filter(function(t){ return !t.deleted; }); }
   function render(){
     var income = 0, spent = 0, perCat = {};
-    state.txns.forEach(function(t){
+    activeTxns().forEach(function(t){
       if (t.type === "income") income += t.amount;
       else { spent += t.amount; perCat[t.cat] = (perCat[t.cat]||0) + t.amount; }
     });
@@ -744,10 +759,11 @@
 
     // Transactions
     var tx = el("#txns"); tx.innerHTML = "";
-    if (!state.txns.length){
+    var list = activeTxns();
+    if (!list.length){
       tx.innerHTML = '<div class="empty"><div class="big">🧾</div>No transactions yet.<br>Add your first record to get started.</div>';
     } else {
-      var sorted = state.txns.slice().sort(function(a,b){ return b.ts - a.ts; });
+      var sorted = list.slice().sort(function(a,b){ return b.ts - a.ts; });
       sorted.forEach(function(t){
         var isInc = t.type === "income";
         var row = document.createElement("div");
@@ -792,22 +808,26 @@
     var cat = el("#category").value;
     if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
     if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
-    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:Date.now() });
+    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false });
     save(); render();
     el("#addForm").reset();
     el("#suggest").classList.remove("show");
     toast(typeVal === "income" ? "Income added ✓" : "Expense added ✓");
     el("#desc").focus();
   }
+  // Soft-delete (tombstone) so the deletion syncs to other devices instead of
+  // reappearing on the next pull.
   function removeTxn(tid){
-    state.txns = state.txns.filter(function(t){ return t.id !== tid; });
+    var t = state.txns.filter(function(x){ return x.id === tid; })[0];
+    if (t){ t.deleted = true; t.updated_at = now(); }
     save(); render();
     toast("Transaction deleted");
   }
   function clearAll(){
-    if (!state.txns.length){ toast("Nothing to clear"); return; }
+    if (!activeTxns().length){ toast("Nothing to clear"); return; }
     if (!confirm("Delete ALL transactions? This cannot be undone.")) return;
-    state.txns = []; save(); render();
+    state.txns.forEach(function(t){ if (!t.deleted){ t.deleted = true; t.updated_at = now(); } });
+    save(); render();
     toast("All transactions cleared");
   }
 
@@ -912,6 +932,10 @@
     var amount = parseFloat(m[1].replace(/,/g, ""));
     if (!(amount > 0)) return null;
 
+    // GCash reference number = natural idempotency key
+    var refM = t.match(/ref(?:erence)?\.?\s*(?:no\.?)?\s*[:#]?\s*([0-9]{6,})/i);
+    var ref = refM ? refM[1] : null;
+
     var isIncome = /(received|credited|refund|cash\s?in|added to your|you got)/i.test(low);
     var isExpense = /(sent|paid|payment|purchase|debited|cash\s?out|transferred to|bills? payment|you have paid)/i.test(low);
     var type = isIncome && !isExpense ? "income" : "expense";
@@ -932,7 +956,7 @@
       else if (/bills?\s?payment|meralco|maynilad|converge|pldt/i.test(low)) cat = "Rent & Utilities";
     }
     var desc = "GCash" + (who ? " · " + who : (type === "income" ? " Cash In" : " Payment"));
-    return { desc: desc, amount: Math.round(amount*100)/100, type: type, cat: cat };
+    return { desc: desc, amount: Math.round(amount*100)/100, type: type, cat: cat, ref: ref };
   }
 
   window.UniBudget = window.UniBudget || {};
@@ -941,17 +965,33 @@
     if (!currentUser || !state) return { ok:false, reason:"not-logged-in" };
     var parsed = parseGcash(text);
     if (!parsed) return { ok:false, reason:"unparsed" };
-    parsed.id = id(); parsed.ts = Date.now(); parsed.source = "gcash-auto";
-    // de-dup: same amount+type in the last 90s
-    var dup = state.txns.some(function(x){
-      return x.source === "gcash-auto" && x.amount === parsed.amount &&
-             x.type === parsed.type && (Date.now() - x.ts) < 90000;
-    });
-    if (dup) return { ok:false, reason:"duplicate" };
+
+    // Idempotency: a GCash Ref no. maps to a deterministic id, so the same
+    // transaction (even captured on two devices) collapses to one row.
+    var stableId = parsed.ref ? ("gcash-" + parsed.ref) : id();
+    var existing = state.txns.filter(function(x){ return x.id === stableId; })[0];
+    if (existing && !existing.deleted) return { ok:false, reason:"duplicate" };
+    // Fallback de-dup for ref-less messages: same amount+type within 90s
+    if (!parsed.ref){
+      var dup = state.txns.some(function(x){
+        return x.source === "gcash-auto" && !x.deleted && x.amount === parsed.amount &&
+               x.type === parsed.type && (now() - x.ts) < 90000;
+      });
+      if (dup) return { ok:false, reason:"duplicate" };
+    }
+    parsed.id = stableId; parsed.ts = now(); parsed.updated_at = now();
+    parsed.deleted = false; parsed.source = "gcash-auto";
     state.txns.push(parsed);
     save(); render();
     toast((parsed.type==="income"?"↓ Auto-added ":"↑ Auto-added ")+fmt(parsed.amount)+" from GCash");
     return { ok:true, txn:parsed };
+  };
+  // Let the cloud layer refresh the running app after a pull.
+  window.UniBudget.reload = function(){
+    if (!currentUser) return;
+    state = loadState();
+    var cs = el("#currency"); if (cs) cs.value = state.currency;
+    render();
   };
   // convenience for the native bridge to check readiness
   window.UniBudget.isReady = function(){ return !!(currentUser && state); };
@@ -1099,7 +1139,7 @@
   try {
     var plat = (window.Capacitor && Capacitor.getPlatform) ? Capacitor.getPlatform() : "web";
     var vb = document.getElementById("verBadge");
-    if (vb) vb.textContent = "v6 · " + plat;
+    if (vb) vb.textContent = "v7 · " + plat;
   } catch (e) {}
 
   // mode chip + note reflect cloud vs device

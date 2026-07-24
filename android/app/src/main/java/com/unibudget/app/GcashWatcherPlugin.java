@@ -1,9 +1,12 @@
 package com.unibudget.app;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 import android.provider.Settings;
 
 import androidx.core.app.NotificationManagerCompat;
@@ -83,7 +86,57 @@ public class GcashWatcherPlugin extends Plugin {
         boolean postNotif = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
                 || NotificationManagerCompat.from(ctx).areNotificationsEnabled();
         ret.put("postNotifications", postNotif);
+        ret.put("battery", isIgnoringBatteryOptimizations(ctx));
         call.resolve(ret);
+    }
+
+    // ---- Battery / background survival (critical on Samsung/Xiaomi/Realme) ----
+
+    @PluginMethod
+    public void requestIgnoreBatteryOptimization(PluginCall call) {
+        Context ctx = getContext();
+        if (isIgnoringBatteryOptimizations(ctx)) { call.resolve(); return; }
+        try {
+            Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            i.setData(Uri.parse("package:" + ctx.getPackageName()));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(i);
+        } catch (Exception e) {
+            openBatterySettings(call);
+            return;
+        }
+        call.resolve();
+    }
+
+    /** Deep-link to the OEM background/battery screen (Samsung "Never sleeping apps"). */
+    @PluginMethod
+    public void openBatterySettings(PluginCall call) {
+        Context ctx = getContext();
+        Intent[] candidates = new Intent[] {
+            new Intent().setComponent(new ComponentName("com.samsung.android.lool",
+                    "com.samsung.android.sm.ui.battery.BatteryActivity")),
+            new Intent().setComponent(new ComponentName("com.miui.securitycenter",
+                    "com.miui.permcenter.autostart.AutoStartManagementActivity")),
+            new Intent().setComponent(new ComponentName("com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.startup.StartupAppListActivity")),
+            new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + ctx.getPackageName()))
+        };
+        for (Intent i : candidates) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+                call.resolve();
+                return;
+            } catch (Exception ignored) {}
+        }
+        call.reject("Could not open battery settings");
+    }
+
+    private boolean isIgnoringBatteryOptimizations(Context ctx) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
+        PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        return pm != null && pm.isIgnoringBatteryOptimizations(ctx.getPackageName());
     }
 
     @PluginMethod

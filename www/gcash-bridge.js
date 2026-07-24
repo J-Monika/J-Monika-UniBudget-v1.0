@@ -76,6 +76,11 @@
         <div class="gc-t">Show notifications</div>\
         <div class="gc-d">So we can alert you when money moves.</div>\
         <button class="gc-btn" id="gc-b3">Allow notifications</button></div></div>\
+      <div class="gc-step" id="gc-s4"><span class="gc-dot"></span><div style="flex:1">\
+        <div class="gc-t">Keep it running</div>\
+        <div class="gc-d">Stops your phone from putting UniBudget to sleep, so it never misses a GCash alert. On Samsung, also add it to "Never sleeping apps".</div>\
+        <button class="gc-btn" id="gc-b4">Allow always-on</button>\
+        <button class="gc-btn" id="gc-b4b" style="background:transparent;color:var(--accent-strong);border:1.5px solid var(--line);margin-top:6px">Open battery settings</button></div></div>\
     </div>\
   </div>';
 
@@ -89,6 +94,8 @@
     document.getElementById("gc-b1").addEventListener("click", async function () { await GcashWatcher.openNotificationAccessSettings(); });
     document.getElementById("gc-b2").addEventListener("click", async function () { await GcashWatcher.requestSmsPermission(); refreshStatus(); });
     document.getElementById("gc-b3").addEventListener("click", async function () { await GcashWatcher.requestPostNotifications(); refreshStatus(); });
+    document.getElementById("gc-b4").addEventListener("click", async function () { try { await GcashWatcher.requestIgnoreBatteryOptimization(); } catch (e) {} refreshStatus(); });
+    document.getElementById("gc-b4b").addEventListener("click", async function () { try { await GcashWatcher.openBatterySettings(); } catch (e) {} });
 
   }
 
@@ -102,6 +109,7 @@
       mark("gc-s1", s.notificationAccess);
       mark("gc-s2", s.sms);
       mark("gc-s3", s.postNotifications);
+      mark("gc-s4", s.battery);
     } catch (e) {}
   }
   function mark(id, ok) {

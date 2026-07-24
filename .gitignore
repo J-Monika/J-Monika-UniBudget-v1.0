@@ -18,7 +18,6 @@ android/app/src/main/assets/public/
 .DS_Store
 Thumbs.db
 
-# Keep the ready-to-install APK at repo root (UniBudget-v6.apk), ignore stray older ones
-UniBudget-v4.apk
-UniBudget-v5.apk
+# Versioned APKs (keep only the stable UniBudget.apk in the repo)
+UniBudget-v*.apk
 UniBudget-debug.apk

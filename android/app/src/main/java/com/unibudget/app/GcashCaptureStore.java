@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,8 +41,14 @@ public class GcashCaptureStore {
     private static final Pattern AMOUNT =
             Pattern.compile("(?:php|₱|p)\\s?([0-9][0-9,]*\\.?[0-9]{0,2})", Pattern.CASE_INSENSITIVE);
     private static final Pattern LOOKS_LIKE =
-            Pattern.compile("(received|sent|paid|payment|debited|credited|cash\\s?in|cash\\s?out|transfer)",
+            Pattern.compile("(received|sent|paid|payment|debited|credited|cash\\s?in|cash\\s?out|transfer|bought .* load)",
                     Pattern.CASE_INSENSITIVE);
+    // GCash reference number — the natural idempotency key.
+    private static final Pattern REF =
+            Pattern.compile("ref(?:erence)?\\.?\\s*(?:no\\.?)?\\s*[:#]?\\s*([0-9]{6,})", Pattern.CASE_INSENSITIVE);
+
+    private static final String KEY_SEEN = "seen_refs";
+    private static final long SEEN_WINDOW_MS = 15 * 60 * 1000; // 15 min
 
     /** Returns true if the text looks like a GCash transaction alert. */
     public static boolean looksLikeGcash(String text) {
@@ -53,13 +60,55 @@ public class GcashCaptureStore {
     public static void handle(Context ctx, String text) {
         if (!looksLikeGcash(text)) return;
 
+        // Idempotency: dedupe by GCash Ref no. (falls back to amount+direction).
+        String key = dedupKey(text);
+        if (alreadySeen(ctx, key)) return;   // a notification + its SMS collapse to one
+        markSeen(ctx, key);
+
         GcashWatcherPlugin plugin = livePlugin;
         if (plugin != null) {
-            plugin.emitMessage(text);      // app open -> JS ingests live (JS de-dupes)
+            plugin.emitMessage(text);      // app open -> JS ingests live
         } else {
             enqueue(ctx, text);            // app closed -> keep for next launch
         }
         postNotification(ctx, text);       // always alert the user
+    }
+
+    private static String dedupKey(String text) {
+        Matcher r = REF.matcher(text);
+        if (r.find()) return "ref:" + r.group(1);
+        Matcher a = AMOUNT.matcher(text);
+        String amt = a.find() ? a.group(1) : "?";
+        boolean income = Pattern.compile("received|credited|cash\\s?in|refund", Pattern.CASE_INSENSITIVE)
+                .matcher(text).find();
+        return "amt:" + amt + ":" + (income ? "in" : "out");
+    }
+
+    private static synchronized boolean alreadySeen(Context ctx, String key) {
+        try {
+            JSONObject seen = new JSONObject(
+                    ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_SEEN, "{}"));
+            if (!seen.has(key)) return false;
+            return (System.currentTimeMillis() - seen.optLong(key, 0)) < SEEN_WINDOW_MS;
+        } catch (Exception e) { return false; }
+    }
+
+    private static synchronized void markSeen(Context ctx, String key) {
+        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        JSONObject seen;
+        try { seen = new JSONObject(p.getString(KEY_SEEN, "{}")); } catch (Exception e) { seen = new JSONObject(); }
+        long now = System.currentTimeMillis();
+        try {
+            seen.put(key, now);
+            // prune expired entries so the map can't grow unbounded
+            JSONObject pruned = new JSONObject();
+            java.util.Iterator<String> it = seen.keys();
+            while (it.hasNext()) {
+                String k = it.next();
+                if (now - seen.optLong(k, 0) < SEEN_WINDOW_MS) pruned.put(k, seen.getLong(k));
+            }
+            p.edit().putString(KEY_SEEN, pruned.toString()).apply();
+        } catch (Exception ignored) {}
     }
 
     private static synchronized void enqueue(Context ctx, String text) {
