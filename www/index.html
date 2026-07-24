@@ -389,6 +389,35 @@
   .acct-btn.danger { color: var(--spent); }
   .acct-btn.danger:hover { background: rgba(220,38,38,.08); border-color: var(--spent); }
 
+  /* ---------- Petsa de Peligro forecaster ---------- */
+  .fc-body { padding: 6px 26px 24px; }
+  .fc-empty { color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .fc-empty b { color: var(--ink); }
+  .fc-hero { display: flex; align-items: baseline; gap: 8px; }
+  .fc-hero .amt { font-size: 34px; font-weight: 800; letter-spacing: -.03em; }
+  .fc-hero .amt.ok { color: var(--income); }
+  .fc-hero .amt.low { color: var(--warn); }
+  .fc-hero .amt.broke { color: var(--spent); }
+  .fc-hero .per { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .fc-sub { font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .fc-sub b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .fc-track { height: 8px; border-radius: 999px; background: var(--track); margin: 14px 0 6px; overflow: hidden; }
+  .fc-track > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .4s; }
+  .fc-track > span.low { background: var(--warn); }
+  .fc-track > span.broke { background: var(--spent); }
+  .fc-danger {
+    margin-top: 14px; background: #fee2e2; color: #b91c1c; border-radius: 12px;
+    padding: 11px 13px; font-size: 12.8px; font-weight: 600; line-height: 1.45;
+  }
+  :root[data-theme="dark"] .fc-danger { background: #3a1c1c; color: #fca5a5; }
+  @media (prefers-color-scheme: dark) { .fc-danger { background: #3a1c1c; color: #fca5a5; } }
+  .fc-danger b { font-weight: 800; }
+  .fc-streak {
+    margin-top: 12px; display: inline-flex; align-items: center; gap: 7px;
+    background: var(--accent-soft); color: var(--accent-strong);
+    padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+  }
+
   /* Build/version badge — proves which build is installed */
   #verBadge {
     position: fixed; right: 10px; top: 10px; z-index: 200;
@@ -514,6 +543,14 @@
         </div>
       </section>
 
+      <section class="card fc" id="forecastCard">
+        <div class="sec-head">
+          <h2>💸 Safe to Spend</h2>
+          <span class="side link" id="editAllowance">Set baon</span>
+        </div>
+        <div class="fc-body" id="fcBody"></div>
+      </section>
+
       <section class="card">
         <div class="sec-head"><h2>➕ Add Record</h2></div>
         <form id="addForm" autocomplete="off">
@@ -552,6 +589,7 @@
         <div class="acct-body">
           <div class="acct-email" id="acctEmail">—</div>
           <button class="acct-btn gcash" id="connectGcashBtn">🔗 Connect GCash <span class="acct-hint">auto-log transactions</span></button>
+          <button class="acct-btn" id="baonBtn">💸 My baon <span class="acct-hint">safe-to-spend</span></button>
           <button class="acct-btn" id="limitsBtn2">🎯 Monthly limits</button>
           <button class="acct-btn danger" id="logoutBtn2">↪ Log out</button>
         </div>
@@ -597,6 +635,42 @@
   </div>
 </div>
 
+<!-- Allowance (baon) modal -->
+<div class="scrim" id="alScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="alTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="alTitle">💸 Your baon</h3>
+        <p>We'll work out how much is safe to spend each day so it lasts.</p>
+      </div>
+      <button class="x" id="alClose" aria-label="Close">✕</button>
+    </div>
+    <div class="goal-list">
+      <div class="field">
+        <label for="alAmount">Allowance amount</label>
+        <div class="amt-wrap"><span class="sym" id="alSym">₱</span>
+          <input id="alAmount" class="num" type="number" min="0" step="50" placeholder="0.00" style="padding-left:30px" /></div>
+      </div>
+      <div class="field">
+        <label for="alPeriod">How often you get it</label>
+        <select id="alPeriod" class="f">
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="alReserve">Set aside for fixed bills (rent, load, subs)</label>
+        <div class="amt-wrap"><span class="sym">₱</span>
+          <input id="alReserve" class="num" type="number" min="0" step="50" placeholder="0.00" style="padding-left:30px" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost" id="alCancel" style="flex:1">Cancel</button>
+      <button class="submit" id="alSave" style="flex:1">Save baon</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <nav id="tabbar" aria-label="Quick actions">
@@ -624,6 +698,7 @@
     { name:"Books & Supplies", icon:"📚" },
     { name:"Fun & Social", icon:"🎉" },
     { name:"Transportation", icon:"🚌" },
+    { name:"Load & Data", icon:"📱" },
     { name:"Subscriptions", icon:"📺" },
     { name:"Other", icon:"📦" }
   ];
@@ -634,7 +709,7 @@
   ];
   var DEFAULT_LIMITS = {
     "Food & Dining":2000, "Rent & Utilities":3200, "Books & Supplies":1000,
-    "Fun & Social":1000, "Transportation":500, "Subscriptions":0, "Other":500
+    "Fun & Social":1000, "Transportation":500, "Load & Data":300, "Subscriptions":0, "Other":500
   };
   // AI smart-category keyword map
   var KEYWORDS = [
@@ -643,7 +718,8 @@
     { cat:"Books & Supplies", words:["book","supplies","notebook","pen","paper","printing","photocopy","module","calculator","laptop","stationery","tuition","exam"] },
     { cat:"Fun & Social", words:["movie","cinema","ktv","party","concert","gimik","outing","game","mobile legends","valorant","gift","date"] },
     { cat:"Transportation", words:["grab","jeep","jeepney","tricycle","bus","train","lrt","mrt","fare","fuel","toll","angkas","joyride","commute","transport"] },
-    { cat:"Subscriptions", words:["netflix","spotify","youtube premium","disney","hbo","subscription","canva","icloud","apple music","prime"] }
+    { cat:"Subscriptions", words:["netflix","spotify","youtube premium","disney","hbo","subscription","canva","icloud","apple music","prime"] },
+    { cat:"Load & Data", words:["load","prepaid","gigalife","gosakto","tnt","smart","globe load","data promo","surfmax","autoloadmax"] }
   ];
 
   // ---------- State (per-user) ----------
@@ -668,6 +744,7 @@
     if (!s || typeof s !== "object") return seedState();
     if (!s.currency) s.currency = "PHP";
     if (!s.limits || !Object.keys(s.limits).length) s.limits = Object.assign({}, DEFAULT_LIMITS);
+    if (!s.allowance) s.allowance = { amount: 0, period: "weekly", anchor: 0, reserve: 0 };
     if (!Array.isArray(s.txns)) s.txns = [];
     s.txns.forEach(function(t){
       if (!t.id) t.id = id();
@@ -782,6 +859,9 @@
 
     // update currency symbols
     el("#amtSym").textContent = sym();
+
+    // Petsa de Peligro forecaster
+    renderForecast();
   }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
 
@@ -892,6 +972,103 @@
     toast("Monthly limits updated ✓");
   }
 
+  // ---------- Petsa de Peligro forecaster ----------
+  function startOfToday(){ var d = new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayKey(ms){ var d = new Date(ms); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+  function fmtDate(ms){ return new Date(ms).toLocaleDateString(undefined,{ month:"short", day:"numeric" }); }
+
+  function periodWindow(al){
+    var dayMs = 86400000;
+    var len = al.period === "monthly" ? 30 : 7;
+    var span = len * dayMs;
+    var anchor = al.anchor || startOfToday();
+    var k = Math.floor((Date.now() - anchor) / span);
+    if (k < 0) k = 0;
+    var start = anchor + k * span;
+    return { start: start, end: start + span, len: len };
+  }
+  function computeForecast(){
+    var al = state.allowance;
+    if (!al || !(al.amount > 0)) return null;
+    var w = periodWindow(al);
+    var t0 = Date.now(), dayMs = 86400000;
+    var spent = activeTxns().reduce(function(a,t){
+      return (t.type === "expense" && t.ts >= w.start && t.ts < w.end) ? a + t.amount : a;
+    }, 0);
+    var reserve = al.reserve || 0;
+    var available = al.amount - reserve - spent;
+    var daysLeft = Math.max(1, Math.ceil((w.end - t0) / dayMs));
+    var daysElapsed = Math.max(1, Math.round((t0 - w.start) / dayMs) + 1);
+    var safePerDay = available / daysLeft;
+    var burn = spent / daysElapsed;
+    var runOut = burn > 0 ? w.start + ((al.amount - reserve) / burn) * dayMs : null;
+    var danger = runOut && runOut < w.end && available > 0;
+    return { w:w, spent:spent, available:available, daysLeft:daysLeft, safePerDay:safePerDay, burn:burn, runOut:runOut, danger:danger, amount:al.amount, reserve:reserve };
+  }
+  // Consecutive days up to today with zero discretionary (Food/Fun) spend.
+  function tipidStreak(){
+    var DISC = { "Food & Dining":1, "Fun & Social":1 };
+    var byDay = {};
+    activeTxns().forEach(function(t){
+      if (t.type === "expense" && DISC[t.cat]) byDay[dayKey(t.ts)] = true;
+    });
+    var streak = 0, d = new Date();
+    for (var i = 0; i < 200; i++){
+      if (byDay[dayKey(d.getTime())]) break;
+      streak++; d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  }
+  function renderForecast(){
+    var body = el("#fcBody"); if (!body) return;
+    var f = computeForecast();
+    if (!f){
+      body.innerHTML = '<div class="fc-empty">Set your <b>baon</b> (weekly or monthly allowance) and UniBudget will tell you exactly how much is <b>safe to spend today</b> so it lasts.</div>';
+      return;
+    }
+    var perDay = f.safePerDay;
+    var cls = perDay <= 0 ? "broke" : (perDay < (f.amount / (f.w.len)) * 0.6 ? "low" : "ok");
+    var pctLeft = Math.max(0, Math.min(100, (f.available / f.amount) * 100));
+    var streak = tipidStreak();
+    var html = ''+
+      '<div class="fc-hero"><span class="amt '+cls+' num">'+fmt(Math.max(0, perDay))+'</span><span class="per">safe / day</span></div>'+
+      '<div class="fc-sub"><b>'+fmt(Math.max(0, f.available))+'</b> left · <b>'+f.daysLeft+'</b> day'+(f.daysLeft===1?"":"s")+' until '+fmtDate(f.w.end)+'</div>'+
+      '<div class="fc-track"><span class="'+cls+'" style="width:'+pctLeft+'%"></span></div>';
+    if (f.available <= 0){
+      html += '<div class="fc-danger">😵 <b>Petsa de peligro!</b> You\'ve used up this '+(state.allowance.period==="monthly"?"month":"week")+"'s baon. Hold off until "+fmtDate(f.w.end)+'.</div>';
+    } else if (f.danger){
+      var early = Math.max(1, Math.round((f.w.end - f.runOut) / 86400000));
+      var fix = f.available / f.daysLeft;
+      html += '<div class="fc-danger">⚠️ At this pace your baon runs out around <b>'+fmtDate(f.runOut)+'</b> — about <b>'+early+' day'+(early===1?"":"s")+' early</b>. Keep it under <b>'+fmt(fix)+'/day</b> to make it.</div>';
+    }
+    if (streak >= 1){
+      html += '<div class="fc-streak">🔥 '+streak+'-day tipid streak'+(streak>=3?" — go ka!":"")+'</div>';
+    }
+    body.innerHTML = html;
+  }
+
+  // ---------- Allowance modal ----------
+  function openAllowance(){
+    var al = state.allowance || {};
+    el("#alAmount").value = al.amount || "";
+    el("#alPeriod").value = al.period || "weekly";
+    el("#alReserve").value = al.reserve || "";
+    el("#alSym").textContent = sym();
+    el("#alScrim").classList.add("show");
+  }
+  function closeAllowance(){ el("#alScrim").classList.remove("show"); }
+  function saveAllowance(){
+    var amount = parseFloat(el("#alAmount").value) || 0;
+    var period = el("#alPeriod").value;
+    var reserve = parseFloat(el("#alReserve").value) || 0;
+    var prev = state.allowance || {};
+    // Re-anchor the period start when amount/period changes or first setup.
+    var anchor = (prev.anchor && prev.period === period && prev.amount) ? prev.anchor : startOfToday();
+    state.allowance = { amount: amount, period: period, reserve: reserve, anchor: anchor };
+    save(); render(); closeAllowance();
+    toast(amount > 0 ? "Baon saved ✓" : "Allowance cleared");
+  }
+
   // ---------- Toast ----------
   var toastTimer;
   function toast(msg){
@@ -914,39 +1091,79 @@
   el("#cancelGoals").addEventListener("click", closeGoals);
   el("#saveGoals").addEventListener("click", saveGoals);
   el("#scrim").addEventListener("click", function(e){ if (e.target === this) closeGoals(); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeGoals(); });
+  // Allowance (baon) modal
+  el("#editAllowance").addEventListener("click", openAllowance);
+  el("#baonBtn").addEventListener("click", openAllowance);
+  el("#alClose").addEventListener("click", closeAllowance);
+  el("#alCancel").addEventListener("click", closeAllowance);
+  el("#alSave").addEventListener("click", saveAllowance);
+  el("#alScrim").addEventListener("click", function(e){ if (e.target === this) closeAllowance(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); } });
   el("#clearAll").addEventListener("click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
   el("#syncBtn").addEventListener("click", syncFn);
   el("#syncNow").addEventListener("click", syncFn);
 
-  // ---------- GCash auto-ingest (called by native Android listener) ----------
-  // Parses a GCash notification / SMS body and returns a transaction, or null.
+  // ---------- Multi-wallet auto-ingest (GCash · Maya · ShopeePay · GrabPay) ----------
+  // Called by the native Android listener with a raw notification/SMS body.
+
+  // On-device REDACTION SHIELD — strip PII before anything is stored or synced.
+  function redactPII(s){
+    if (!s) return s;
+    return String(s)
+      .replace(/(?:\+?63|0)9\d{2}[\s-]?\d{3}[\s-]?\d{4}/g, "•••")  // PH mobile numbers
+      .replace(/\b\d{6,}\b/g, "•••")                                // long digit runs (ref / account)
+      .trim();
+  }
+  function looksLikeCompany(s){
+    return /\b(inc|ltd|corp|co|pte|store|tech|company|enterprise|ventures|solutions|services|pay|bank|globe|ecpay|shop|mart|food|mobile|digital|ph)\b|\d|\*|&/i.test(s);
+  }
+  function maskName(s){
+    var parts = s.trim().split(/\s+/);
+    if (parts.length < 2) return s;                       // single token — leave it
+    return parts[0] + " " + parts.slice(1).map(function(w){ return (w[0]||"").toUpperCase() + "."; }).join("");
+  }
+  function safeCounterparty(who){
+    who = redactPII(who);
+    if (who && !looksLikeCompany(who)) who = maskName(who);  // personal full names -> "Juan D. C."
+    return who;
+  }
+  function detectWallet(low){
+    if (/paymaya|maya/.test(low)) return "Maya";
+    if (/shopee/.test(low)) return "ShopeePay";
+    if (/grab/.test(low)) return "GrabPay";
+    return "GCash";
+  }
+
+  // Parses a wallet notification / SMS body and returns a transaction, or null.
   function parseGcash(text){
     if (!text) return null;
     var t = String(text).replace(/\s+/g, " ").trim();
     var low = t.toLowerCase();
-    // amount: "PHP 500.00", "P500", "₱1,250.50", "PHP1,000"
+    var wallet = detectWallet(low);
+
+    // amount: "PHP 500.00", "P500", "₱1,250.50"
     var m = t.match(/(?:php|p|₱)\s?([0-9][0-9,]*\.?[0-9]{0,2})/i);
     if (!m) return null;
     var amount = parseFloat(m[1].replace(/,/g, ""));
     if (!(amount > 0)) return null;
 
-    // GCash reference number = natural idempotency key
-    var refM = t.match(/ref(?:erence)?\.?\s*(?:no\.?)?\s*[:#]?\s*([0-9]{6,})/i);
+    // Reference / transaction number = idempotency key (GCash "Ref no.", ShopeePay "Txn ID")
+    var refM = t.match(/(?:ref(?:erence)?|txn|transaction)\.?\s*(?:no\.?|id)?\s*[:#]?\s*([0-9]{6,})/i);
     var ref = refM ? refM[1] : null;
 
-    var isIncome = /(received|credited|refund|cash\s?in|added to your|you got)/i.test(low);
-    var isExpense = /(sent|paid|payment|purchase|debited|cash\s?out|transferred to|bills? payment|you have paid)/i.test(low);
+    var isIncome = /(received|credited|refund|cash\s?in|added to your|you got|top ?up)/i.test(low);
+    var isExpense = /(sent|paid|payment|purchase|debited|cash\s?out|transferred to|bills? payment|successful|you have paid)/i.test(low);
     var type = isIncome && !isExpense ? "income" : "expense";
 
-    // counterparty
+    // counterparty (redacted)
     var who = "";
     var wm = t.match(/(?:from|to|at|for)\s+([A-Z0-9][A-Za-z0-9 .,'&*-]{2,40})/);
     if (wm) who = wm[1]
-      .replace(/\s+(w\/|has|new balance|new|ref|on|is|\d).*$/i, "")  // cut trailing "New balance…", "has been…", refs, dates
-      .replace(/[.\s]+$/, "")                                        // strip trailing dots/spaces
+      .replace(/\s+(w\/|via|has|new balance|new|ref|txn|on|is|\d).*$/i, "")
+      .replace(/[.\s]+$/, "")
       .trim();
+    who = safeCounterparty(who);
 
     // category guess
     var cat = type === "income" ? "Allowance & Aid" : "Other";
@@ -954,8 +1171,9 @@
       var found = suggestCategory(low + " " + who.toLowerCase());
       if (found) cat = found;
       else if (/bills?\s?payment|meralco|maynilad|converge|pldt/i.test(low)) cat = "Rent & Utilities";
+      else if (/load|prepaid|\bdata\b|mobile data/i.test(low)) cat = "Load & Data";
     }
-    var desc = "GCash" + (who ? " · " + who : (type === "income" ? " Cash In" : " Payment"));
+    var desc = wallet + (who ? " · " + who : (type === "income" ? " Cash In" : " Payment"));
     return { desc: desc, amount: Math.round(amount*100)/100, type: type, cat: cat, ref: ref };
   }
 
@@ -983,7 +1201,8 @@
     parsed.deleted = false; parsed.source = "gcash-auto";
     state.txns.push(parsed);
     save(); render();
-    toast((parsed.type==="income"?"↓ Auto-added ":"↑ Auto-added ")+fmt(parsed.amount)+" from GCash");
+    var walletName = (parsed.desc || "").split(" · ")[0] || "wallet";
+    toast((parsed.type==="income"?"↓ Auto-added ":"↑ Auto-added ")+fmt(parsed.amount)+" · "+walletName);
     return { ok:true, txn:parsed };
   };
   // Let the cloud layer refresh the running app after a pull.
@@ -1139,7 +1358,7 @@
   try {
     var plat = (window.Capacitor && Capacitor.getPlatform) ? Capacitor.getPlatform() : "web";
     var vb = document.getElementById("verBadge");
-    if (vb) vb.textContent = "v7 · " + plat;
+    if (vb) vb.textContent = "v8 · " + plat;
   } catch (e) {}
 
   // mode chip + note reflect cloud vs device

@@ -38,9 +38,9 @@ public class GcashSmsReceiver extends BroadcastReceiver {
         String text = body.toString().trim();
         if (text.isEmpty()) return;
 
-        boolean fromGcash = sender != null && sender.toLowerCase().contains("gcash");
-        // Accept if the sender is GCash, or the body itself is unmistakably a GCash alert.
-        if (fromGcash || text.toLowerCase().contains("gcash")) {
+        String blob = ((sender == null ? "" : sender) + " " + text).toLowerCase();
+        // Accept texts from any supported wallet sender or whose body names one.
+        if (blob.matches("(?s).*(gcash|paymaya|maya|shopeepay|shopee|grabpay).*")) {
             GcashCaptureStore.handle(context.getApplicationContext(), text);
         }
     }

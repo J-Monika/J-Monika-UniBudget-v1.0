@@ -15,11 +15,21 @@ import android.text.TextUtils;
  */
 public class GcashNotificationListener extends NotificationListenerService {
 
+    // Package substrings for supported e-wallets (GCash, Maya, ShopeePay, GrabPay).
+    private static final String[] WALLET_PKGS = { "gcash", "paymaya", "maya", "shopee", "grab" };
+
+    private static boolean isWalletPackage(String pkg) {
+        if (pkg == null) return false;
+        String p = pkg.toLowerCase();
+        for (String w : WALLET_PKGS) if (p.contains(w)) return true;
+        return false;
+    }
+
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         if (sbn == null) return;
-        String pkg = sbn.getPackageName();
-        if (pkg == null || !pkg.toLowerCase().contains("gcash")) return;
+        // Strict package isolation: only ever read notifications from known wallets.
+        if (!isWalletPackage(sbn.getPackageName())) return;
 
         Notification n = sbn.getNotification();
         if (n == null || n.extras == null) return;
