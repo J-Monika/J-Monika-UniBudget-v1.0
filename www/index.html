@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<title>UniBudget — Student Budget Tracker</title>
+<style>
+  :root {
+    --accent: #4f46e5;
+    --accent-strong: #4338ca;
+    --accent-soft: #eef0fe;
+    --page: #f3f4f8;
+    --card: #ffffff;
+    --ink: #1e2433;
+    --ink-soft: #3f4657;
+    --muted: #6b7280;
+    --line: #eceef3;
+    --track: #eceef4;
+    --income: #16a34a;
+    --income-soft: #dcfce7;
+    --spent: #dc2626;
+    --warn: #d97706;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.05);
+    --radius: 18px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #7c7bf5;
+      --accent-strong: #6366f1;
+      --accent-soft: #232544;
+      --page: #0d0f17;
+      --card: #161925;
+      --ink: #eef0f6;
+      --ink-soft: #c3c8d6;
+      --muted: #8b93a7;
+      --line: #232634;
+      --track: #262a3a;
+      --income: #4ade80;
+      --income-soft: #14331f;
+      --spent: #f87171;
+      --warn: #fbbf24;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --accent: #4f46e5; --accent-strong: #4338ca; --accent-soft: #eef0fe;
+    --page: #f3f4f8; --card: #ffffff; --ink: #1e2433; --ink-soft: #3f4657;
+    --muted: #6b7280; --line: #eceef3; --track: #eceef4;
+    --income: #16a34a; --income-soft: #dcfce7; --spent: #dc2626; --warn: #d97706;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.05);
+  }
+  :root[data-theme="dark"] {
+    --accent: #7c7bf5; --accent-strong: #6366f1; --accent-soft: #232544;
+    --page: #0d0f17; --card: #161925; --ink: #eef0f6; --ink-soft: #c3c8d6;
+    --muted: #8b93a7; --line: #232634; --track: #262a3a;
+    --income: #4ade80; --income-soft: #14331f; --spent: #f87171; --warn: #fbbf24;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Header ---------- */
+  header.bar {
+    position: sticky; top: 0; z-index: 30;
+    background: linear-gradient(180deg, #524af0, var(--accent));
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(79,70,229,.28);
+  }
+  .bar-inner {
+    max-width: 1180px; margin: 0 auto; padding: 16px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
+  .brand .logo {
+    width: 38px; height: 38px; border-radius: 11px;
+    background: rgba(255,255,255,.16);
+    display: grid; place-items: center; font-size: 20px;
+  }
+  .ai-pill {
+    font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    background: rgba(255,255,255,.18); padding: 4px 9px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .bar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .h-btn {
+    border: 0; cursor: pointer; font-weight: 700; font-size: 14px;
+    padding: 9px 15px; border-radius: 11px;
+    display: inline-flex; align-items: center; gap: 7px;
+    color: #fff; background: rgba(255,255,255,.14);
+    transition: background .15s, transform .1s;
+  }
+  .h-btn:hover { background: rgba(255,255,255,.24); }
+  .h-btn:active { transform: translateY(1px); }
+  .h-btn.solid { background: #fff; color: var(--accent-strong); }
+  .h-btn.solid:hover { background: #f2f2ff; }
+  select.cur {
+    appearance: none; border: 0; cursor: pointer;
+    color: #fff; background: rgba(255,255,255,.14);
+    font-weight: 700; font-size: 14px; padding: 9px 30px 9px 14px; border-radius: 11px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  select.cur option { color: #111; }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #6ee7a8;
+    box-shadow: 0 0 0 3px rgba(110,231,168,.3);
+  }
+  .sync-dot.dirty { background: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.3); }
+
+  /* Mobile header: keep everything (incl. avatar) on-screen */
+  @media (max-width: 560px) {
+    .bar-inner { flex-wrap: wrap; padding: 12px 14px; gap: 10px 8px; }
+    .brand { font-size: 18px; gap: 9px; }
+    .brand .logo { width: 34px; height: 34px; font-size: 18px; }
+    .ai-pill { display: none; }
+    .bar-actions { margin-left: auto; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+    .h-btn { padding: 8px 11px; font-size: 13px; }
+    #syncLabel { display: none; }            /* keep the status dot, drop the word */
+    .h-btn.solid { padding: 8px 12px; }
+    select.cur { padding: 8px 26px 8px 11px; font-size: 13px; }
+    .avatar { width: 36px; height: 36px; }
+  }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+  .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+  }
+  .stack { display: flex; flex-direction: column; gap: 24px; }
+
+  /* ---------- Balance card ---------- */
+  .balance { padding: 24px 26px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .balance .big { font-size: 42px; font-weight: 800; letter-spacing: -.03em; margin: 6px 0 20px; line-height: 1; }
+  .balance .big.neg { color: var(--spent); }
+  .io { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .io .lab { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+  .io .in { color: var(--income); }
+  .io .sp { color: var(--spent); }
+  .io .val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
+
+  /* ---------- Section head ---------- */
+  .sec-head { padding: 22px 26px 6px; display: flex; align-items: baseline; justify-content: space-between; }
+  .sec-head h2 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+  .sec-head .side { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .sec-head .side.link { color: var(--accent); cursor: pointer; }
+  .sec-head .side.link:hover { text-decoration: underline; }
+
+  /* ---------- Add form ---------- */
+  form { padding: 4px 26px 26px; display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  input, select.f {
+    width: 100%; border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 12px; padding: 12px 14px; font-size: 15px; font-weight: 500;
+    font-family: inherit; transition: border-color .15s, box-shadow .15s;
+  }
+  input::placeholder { color: var(--muted); opacity: .8; }
+  input:focus, select.f:focus, select.cur:focus-visible, .h-btn:focus-visible {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  select.f {
+    appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat: no-repeat; background-position: right 13px center;
+  }
+  .amt-wrap { position: relative; }
+  .amt-wrap .sym { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--muted); }
+  .amt-wrap input { padding-left: 30px; }
+  .suggest {
+    display: none; align-items: center; gap: 8px; font-size: 13px;
+    background: var(--accent-soft); color: var(--accent-strong);
+    padding: 8px 12px; border-radius: 10px; font-weight: 600;
+  }
+  .suggest.show { display: flex; }
+  .suggest button {
+    margin-left: auto; border: 0; cursor: pointer; font-weight: 700; font-size: 12px;
+    background: var(--accent); color: #fff; padding: 4px 10px; border-radius: 7px;
+  }
+  .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-toggle button {
+    border: 1.5px solid var(--line); background: var(--card); color: var(--muted);
+    padding: 11px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .type-toggle button.on-exp { border-color: var(--spent); background: var(--spent); color: #fff; }
+  .type-toggle button.on-inc { border-color: var(--income); background: var(--income); color: #fff; }
+  .submit {
+    margin-top: 4px; border: 0; cursor: pointer; width: 100%;
+    background: var(--accent); color: #fff; font-weight: 800; font-size: 15.5px;
+    padding: 14px; border-radius: 13px; font-family: inherit;
+    transition: background .15s, transform .1s;
+  }
+  .submit:hover { background: var(--accent-strong); }
+  .submit:active { transform: translateY(1px); }
+
+  /* ---------- Category budgets ---------- */
+  .cats { padding: 8px 26px 24px; display: flex; flex-direction: column; }
+  .cat { padding: 14px 0; border-top: 1px solid var(--line); }
+  .cat:first-child { border-top: 0; }
+  .cat-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .cat-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .cat-fig { font-size: 13.5px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .cat-fig .spent-part { color: var(--ink); font-weight: 700; }
+  .cat-fig.over .spent-part { color: var(--spent); }
+  .cat-fig.warn .spent-part { color: var(--warn); }
+  .bar { height: 7px; border-radius: 999px; background: var(--track); margin-top: 10px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .4s ease; }
+  .bar > span.warn { background: var(--warn); }
+  .bar > span.over { background: var(--spent); }
+
+  /* ---------- Transactions ---------- */
+  .txns { padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .txn {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 14px; border-radius: 14px; background: var(--page);
+    transition: background .15s;
+  }
+  @media (prefers-color-scheme: dark) { .txn { background: #1c2030; } }
+  :root[data-theme="dark"] .txn { background: #1c2030; }
+  :root[data-theme="light"] .txn { background: var(--page); }
+  .txn:hover { background: var(--accent-soft); }
+  .txn .ic {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 18px;
+  }
+  .txn .ic.inc { background: var(--income-soft); color: var(--income); }
+  .txn .ic.exp { background: #fee2e2; color: var(--spent); }
+  @media (prefers-color-scheme: dark) { .txn .ic.exp { background: #3a1c1c; } }
+  :root[data-theme="dark"] .txn .ic.exp { background: #3a1c1c; }
+  :root[data-theme="light"] .txn .ic.exp { background: #fee2e2; }
+  .txn .desc { min-width: 0; }
+  .txn .desc .t { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .txn .desc .s { font-size: 12.5px; color: var(--muted); }
+  .txn .amt { margin-left: auto; font-weight: 800; font-size: 15.5px; white-space: nowrap; }
+  .txn .amt.inc { color: var(--income); }
+  .txn .amt.exp { color: var(--ink); }
+  .txn .del {
+    border: 0; background: transparent; cursor: pointer; color: var(--muted);
+    padding: 6px; border-radius: 8px; display: grid; place-items: center; line-height: 0;
+    opacity: .5; transition: opacity .15s, color .15s, background .15s;
+  }
+  .txn:hover .del { opacity: 1; }
+  .txn .del:hover { color: var(--spent); background: rgba(220,38,38,.12); }
+  .empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
+  .empty .big { font-size: 34px; margin-bottom: 8px; }
+
+  /* ---------- Modal ---------- */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(15,20,35,.5); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+  }
+  .scrim.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 20px; box-shadow: var(--shadow);
+    width: 100%; max-width: 480px; max-height: 88vh; overflow: auto; border: 1px solid var(--line);
+  }
+  .modal-head { padding: 22px 26px 4px; display: flex; align-items: center; justify-content: space-between; }
+  .modal-head h3 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+  .modal-head p { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); }
+  .x { border: 0; background: var(--page); cursor: pointer; width: 34px; height: 34px; border-radius: 10px; font-size: 18px; color: var(--muted); }
+  .x:hover { background: var(--track); color: var(--ink); }
+  .goal-list { padding: 16px 26px 8px; display: flex; flex-direction: column; gap: 12px; }
+  .goal-row { display: flex; align-items: center; gap: 12px; }
+  .goal-row .gname { flex: 1; font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+  .goal-row .ginput { position: relative; width: 130px; }
+  .goal-row .ginput .sym { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--muted); font-size: 14px; }
+  .goal-row .ginput input { padding-left: 26px; padding-top: 9px; padding-bottom: 9px; text-align: right; }
+  .modal-foot { padding: 12px 26px 24px; display: flex; gap: 10px; }
+  .modal-foot .submit { margin: 0; }
+  .ghost {
+    border: 1.5px solid var(--line); background: var(--card); color: var(--ink-soft);
+    font-weight: 700; font-size: 15px; padding: 14px 18px; border-radius: 13px; cursor: pointer; font-family: inherit;
+  }
+  .ghost:hover { background: var(--page); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--page); padding: 12px 20px; border-radius: 12px;
+    font-weight: 600; font-size: 14px; box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s; z-index: 300; max-width: 90vw; text-align: center;
+  }
+  @media (max-width: 900px) { body.authed .toast { bottom: 104px; } }  /* above the tab bar */
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ---------- Auth screen ---------- */
+  #app { display: none; }
+  body.authed #app { display: block; }
+  body.authed #auth { display: none; }
+  #auth {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(1200px 500px at 10% -10%, rgba(79,70,229,.18), transparent 60%),
+      radial-gradient(900px 500px at 110% 110%, rgba(124,123,245,.14), transparent 55%),
+      var(--page);
+  }
+  .auth-card {
+    width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 22px; box-shadow: var(--shadow); padding: 32px 30px 28px;
+  }
+  .auth-brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 22px; letter-spacing: -.02em; margin-bottom: 4px; }
+  .auth-brand .logo {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
+    background: linear-gradient(180deg, #524af0, var(--accent)); box-shadow: 0 6px 16px rgba(79,70,229,.35);
+  }
+  .auth-sub { color: var(--muted); font-size: 14.5px; margin: 2px 0 22px; }
+  .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--page); padding: 5px; border-radius: 13px; margin-bottom: 20px; }
+  .auth-tabs button {
+    border: 0; background: transparent; cursor: pointer; padding: 10px; border-radius: 9px;
+    font-weight: 700; font-size: 14.5px; color: var(--muted); font-family: inherit; transition: all .15s;
+  }
+  .auth-tabs button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  #auth .field { margin-bottom: 14px; }
+  #auth .submit { margin-top: 6px; }
+  .auth-err {
+    display: none; background: #fee2e2; color: #b91c1c; border-radius: 11px;
+    padding: 11px 14px; font-size: 13.5px; font-weight: 600; margin-bottom: 14px; line-height: 1.4;
+  }
+  :root[data-theme="dark"] .auth-err { background: #3a1c1c; color: #fca5a5; }
+  @media (prefers-color-scheme: dark) { .auth-err { background: #3a1c1c; color: #fca5a5; } }
+  .auth-err.show { display: block; }
+  .auth-note { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 16px; line-height: 1.5; }
+  .mode-chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong);
+  }
+  .pw-wrap { position: relative; }
+  .pw-wrap .toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 700;
+    padding: 6px 10px; border-radius: 8px;
+  }
+  .pw-wrap .toggle:hover { background: var(--page); color: var(--ink); }
+
+  /* ---------- Header user menu ---------- */
+  .user-menu { position: relative; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 11px; border: 0; cursor: pointer;
+    background: rgba(255,255,255,.18); color: #fff; font-weight: 800; font-size: 15px;
+    display: grid; place-items: center; font-family: inherit;
+  }
+  .avatar:hover { background: rgba(255,255,255,.28); }
+  .menu-pop {
+    display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 40;
+    background: var(--card); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow); min-width: 220px; overflow: hidden;
+  }
+  .menu-pop.show { display: block; }
+  .menu-head { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .menu-head .n { font-weight: 800; font-size: 14.5px; }
+  .menu-head .e { font-size: 12.5px; color: var(--muted); word-break: break-all; }
+  .menu-item {
+    width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer;
+    padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--ink); font-family: inherit;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .menu-item:hover { background: var(--page); }
+  .menu-item.danger { color: var(--spent); }
+
+  /* ---------- Account panel (always visible in body) ---------- */
+  .acct-body { padding: 4px 26px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .acct-email { font-size: 13px; color: var(--muted); font-weight: 600; word-break: break-all; margin-bottom: 4px; }
+  .acct-btn {
+    width: 100%; text-align: left; border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 13px 15px; border-radius: 12px; font-size: 14.5px; font-weight: 700; cursor: pointer;
+    font-family: inherit; display: flex; align-items: center; gap: 9px; transition: background .15s, border-color .15s;
+  }
+  .acct-btn:hover { background: var(--page); }
+  .acct-btn .acct-hint { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .acct-btn.gcash { border-color: var(--accent); color: var(--accent-strong); background: var(--accent-soft); }
+  .acct-btn.gcash .acct-hint { color: var(--accent-strong); opacity: .8; }
+  .acct-btn.danger { color: var(--spent); }
+  .acct-btn.danger:hover { background: rgba(220,38,38,.08); border-color: var(--spent); }
+
+  /* Build/version badge — proves which build is installed */
+  #verBadge {
+    position: fixed; right: 10px; top: 10px; z-index: 200;
+    background: #16a34a; color: #fff; font-size: 11px; font-weight: 800;
+    padding: 5px 11px; border-radius: 999px; letter-spacing: .02em;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3); pointer-events: none; font-family: inherit;
+  }
+
+  /* Bottom quick-action bar (mobile) */
+  #tabbar { display: none; }
+  @media (max-width: 900px) {
+    body.authed #tabbar {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+      background: var(--card); border-top: 1px solid var(--line);
+      padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+      box-shadow: 0 -6px 22px rgba(0,0,0,.10);
+    }
+    #tabbar button {
+      flex: 1; border: 0; background: transparent; cursor: pointer; font-family: inherit;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-size: 11px; font-weight: 700; color: var(--muted); padding: 6px 4px; border-radius: 12px;
+    }
+    #tabbar button span { font-size: 21px; line-height: 1; }
+    #tabbar button:active { background: var(--page); }
+    #tabbar button.danger { color: var(--spent); }
+    body.authed main { padding-bottom: 96px; }   /* clear the bar */
+  }
+</style>
+</head>
+<body>
+
+
+<div id="verBadge">v5</div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth">
+  <div class="auth-card">
+    <div class="auth-brand"><span class="logo">🎓</span><span>UniBudget</span></div>
+    <div class="auth-sub">Smart budgeting for students <span class="mode-chip" id="modeChip">Device mode</span></div>
+
+    <div class="auth-tabs">
+      <button type="button" id="tabLogin" class="on">Log in</button>
+      <button type="button" id="tabSignup">Sign up</button>
+    </div>
+
+    <div class="auth-err" id="authErr"></div>
+
+    <form id="authForm" autocomplete="on">
+      <div class="field" id="nameField" style="display:none">
+        <label for="auName">Full name</label>
+        <input id="auName" type="text" placeholder="Juan Dela Cruz" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="auEmail">Email</label>
+        <input id="auEmail" type="email" placeholder="you@university.edu" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="auPass">Password</label>
+        <div class="pw-wrap">
+          <input id="auPass" type="password" placeholder="At least 6 characters" autocomplete="current-password" />
+          <button type="button" class="toggle" id="pwToggle">Show</button>
+        </div>
+      </div>
+      <button type="submit" class="submit" id="authSubmit">Log in</button>
+    </form>
+
+    <div class="auth-note" id="authNote">
+      Your data is saved securely on this device.
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app">
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand">
+      <span class="logo">🎓</span>
+      <span>UniBudget</span>
+      <span class="ai-pill">AI ✨</span>
+    </div>
+    <div class="bar-actions">
+      <select class="cur" id="currency" aria-label="Currency">
+        <option value="PHP">₱ PHP</option>
+        <option value="USD">$ USD</option>
+        <option value="EUR">€ EUR</option>
+        <option value="GBP">£ GBP</option>
+        <option value="JPY">¥ JPY</option>
+      </select>
+      <button class="h-btn" id="syncBtn"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Synced</span></button>
+      <button class="h-btn solid" id="goalsBtn">🎯 Goals</button>
+      <div class="user-menu">
+        <button class="avatar" id="avatarBtn" aria-label="Account menu">U</button>
+        <div class="menu-pop" id="menuPop">
+          <div class="menu-head">
+            <div class="n" id="menuName">User</div>
+            <div class="e" id="menuEmail">—</div>
+          </div>
+          <button class="menu-item" id="menuGoals">🎯 Monthly limits</button>
+          <button class="menu-item danger" id="menuLogout">↪ Log out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- LEFT RAIL -->
+    <div class="stack">
+      <section class="card balance">
+        <div class="eyebrow">Total Balance</div>
+        <div class="big num" id="balance">₱0.00</div>
+        <div class="io">
+          <div>
+            <div class="lab in">↓ Income</div>
+            <div class="val num in" id="income" style="color:var(--income)">₱0.00</div>
+          </div>
+          <div>
+            <div class="lab sp">↑ Spent</div>
+            <div class="val num sp" id="spent" style="color:var(--spent)">₱0.00</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="sec-head"><h2>➕ Add Record</h2></div>
+        <form id="addForm" autocomplete="off">
+          <div class="field">
+            <label for="desc">Description</label>
+            <input id="desc" type="text" placeholder="e.g. Jollibee, GCash, Dorm Rent" />
+          </div>
+          <div class="suggest" id="suggest">
+            <span id="suggestText"></span>
+            <button type="button" id="applySuggest">Use</button>
+          </div>
+          <div class="field">
+            <label for="amount">Amount</label>
+            <div class="amt-wrap">
+              <span class="sym" id="amtSym">₱</span>
+              <input id="amount" class="num" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <div class="type-toggle">
+              <button type="button" id="btnExp" class="on-exp" data-type="expense">Expense (−)</button>
+              <button type="button" id="btnInc" data-type="income">Income (+)</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" class="f"></select>
+          </div>
+          <button type="submit" class="submit">Add Transaction</button>
+        </form>
+      </section>
+
+      <section class="card acct">
+        <div class="sec-head"><h2>👤 Account</h2></div>
+        <div class="acct-body">
+          <div class="acct-email" id="acctEmail">—</div>
+          <button class="acct-btn gcash" id="connectGcashBtn">🔗 Connect GCash <span class="acct-hint">auto-log transactions</span></button>
+          <button class="acct-btn" id="limitsBtn2">🎯 Monthly limits</button>
+          <button class="acct-btn danger" id="logoutBtn2">↪ Log out</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT MAIN -->
+    <div class="stack">
+      <section class="card">
+        <div class="sec-head">
+          <h2>Category Budgets &amp; Goals</h2>
+          <span class="side link" id="editGoals">Monthly Limits</span>
+        </div>
+        <div class="cats" id="cats"></div>
+      </section>
+
+      <section class="card">
+        <div class="sec-head">
+          <h2>Recent Transactions</h2>
+          <span class="side"><span class="link" id="syncNow">🔄 Sync Now</span> &nbsp; <span class="link" id="clearAll" style="color:var(--spent)">Clear All</span></span>
+        </div>
+        <div class="txns" id="txns"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Goals modal -->
+<div class="scrim" id="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="goalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="goalTitle">🎯 Monthly Limits</h3>
+        <p>Set a spending cap for each category. Set to 0 for no limit.</p>
+      </div>
+      <button class="x" id="closeModal" aria-label="Close">✕</button>
+    </div>
+    <div class="goal-list" id="goalList"></div>
+    <div class="modal-foot">
+      <button class="ghost" id="cancelGoals" style="flex:1">Cancel</button>
+      <button class="submit" id="saveGoals" style="flex:1">Save Limits</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav id="tabbar" aria-label="Quick actions">
+  <button type="button" data-act="home"><span>🏠</span>Home</button>
+  <button type="button" data-act="gcash"><span>🔗</span>GCash</button>
+  <button type="button" data-act="goals"><span>🎯</span>Goals</button>
+  <button type="button" data-act="logout" class="danger"><span>↪</span>Log out</button>
+</nav>
+</div><!-- /#app -->
+
+
+<script src="vendor/capacitor.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="app-config.js"></script>
+<script src="cloud.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Config ----------
+  var CURRENCIES = { PHP:"₱", USD:"$", EUR:"€", GBP:"£", JPY:"¥" };
+  var EXPENSE_CATS = [
+    { name:"Food & Dining", icon:"🍔" },
+    { name:"Rent & Utilities", icon:"🏠" },
+    { name:"Books & Supplies", icon:"📚" },
+    { name:"Fun & Social", icon:"🎉" },
+    { name:"Transportation", icon:"🚌" },
+    { name:"Subscriptions", icon:"📺" },
+    { name:"Other", icon:"📦" }
+  ];
+  var INCOME_CATS = [
+    { name:"Allowance & Aid", icon:"💸" },
+    { name:"Salary & Part-time", icon:"💼" },
+    { name:"Other", icon:"📦" }
+  ];
+  var DEFAULT_LIMITS = {
+    "Food & Dining":2000, "Rent & Utilities":3200, "Books & Supplies":1000,
+    "Fun & Social":1000, "Transportation":500, "Subscriptions":0, "Other":500
+  };
+  // AI smart-category keyword map
+  var KEYWORDS = [
+    { cat:"Food & Dining", words:["jollibee","mcdo","mang inasal","chowking","grab food","foodpanda","kfc","food","lunch","dinner","breakfast","coffee","starbucks","milk tea","snack","canteen","restaurant","eat"] },
+    { cat:"Rent & Utilities", words:["rent","dorm","boarding","meralco","electric","water bill","maynilad","wifi","internet","pldt","converge","gas","apartment","utility"] },
+    { cat:"Books & Supplies", words:["book","supplies","notebook","pen","paper","printing","photocopy","module","calculator","laptop","stationery","tuition","exam"] },
+    { cat:"Fun & Social", words:["movie","cinema","ktv","party","concert","gimik","outing","game","mobile legends","valorant","gift","date"] },
+    { cat:"Transportation", words:["grab","jeep","jeepney","tricycle","bus","train","lrt","mrt","fare","fuel","toll","angkas","joyride","commute","transport"] },
+    { cat:"Subscriptions", words:["netflix","spotify","youtube premium","disney","hbo","subscription","canva","icloud","apple music","prime"] }
+  ];
+
+  // ---------- State (per-user) ----------
+  var state = null;          // active user's budget data
+  var currentUser = null;    // { email, name }
+
+  function id(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+  function dataKey(email){ return "unibudget:data:" + email.toLowerCase(); }
+
+  function seedState() {
+    // First-run demo data matching the original design
+    return {
+      currency: "PHP",
+      limits: Object.assign({}, DEFAULT_LIMITS),
+      txns: [
+        { id: id(), desc:"Bank", amount:1700, type:"income", cat:"Other", ts: Date.now()-86400000 },
+        { id: id(), desc:"Gcash", amount:800, type:"income", cat:"Allowance & Aid", ts: Date.now()-43200000 }
+      ]
+    };
+  }
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(dataKey(currentUser.email));
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return seedState();
+  }
+  var dirty = false;
+  function save() {
+    if (!currentUser) return;
+    localStorage.setItem(dataKey(currentUser.email), JSON.stringify(state));
+    setDirty(false);
+    if (window.Cloud && Cloud.push) Cloud.push(state); // no-op in device mode
+  }
+  function setDirty(v){
+    dirty = v;
+    var dot = document.getElementById("syncDot");
+    var lab = document.getElementById("syncLabel");
+    if (dot) dot.classList.toggle("dirty", v);
+    if (lab) lab.textContent = v ? "Sync Now" : "Synced";
+  }
+
+  // ---------- Formatting ----------
+  function sym(){ return CURRENCIES[state.currency] || "₱"; }
+  function fmt(n){
+    var neg = n < 0;
+    var s = Math.abs(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    return (neg ? "−" : "") + sym() + s;
+  }
+  function catIcon(name, type){
+    var list = type === "income" ? INCOME_CATS : EXPENSE_CATS;
+    for (var i=0;i<list.length;i++) if (list[i].name === name) return list[i].icon;
+    return "📦";
+  }
+
+  // ---------- Elements ----------
+  var el = function(sel){ return document.querySelector(sel); };
+  var typeVal = "expense";
+
+  // ---------- Render ----------
+  function render(){
+    var income = 0, spent = 0, perCat = {};
+    state.txns.forEach(function(t){
+      if (t.type === "income") income += t.amount;
+      else { spent += t.amount; perCat[t.cat] = (perCat[t.cat]||0) + t.amount; }
+    });
+    var balance = income - spent;
+
+    var balEl = el("#balance");
+    balEl.textContent = fmt(balance);
+    balEl.classList.toggle("neg", balance < 0);
+    el("#income").textContent = fmt(income);
+    el("#spent").textContent = fmt(spent);
+
+    // Category bars
+    var cats = el("#cats"); cats.innerHTML = "";
+    EXPENSE_CATS.forEach(function(c){
+      var used = perCat[c.name] || 0;
+      var limit = state.limits[c.name] || 0;
+      var pct = limit > 0 ? Math.min(100, (used/limit)*100) : 0;
+      var over = limit > 0 && used > limit;
+      var warn = limit > 0 && !over && used >= limit*0.85;
+      var figClass = over ? "over" : (warn ? "warn" : "");
+      var barClass = over ? "over" : (warn ? "warn" : "");
+      var figText = limit > 0
+        ? '<span class="spent-part num">'+fmt(used)+'</span> / '+fmt(limit)
+        : '<span class="spent-part num">'+fmt(used)+'</span>';
+      var row = document.createElement("div");
+      row.className = "cat";
+      row.innerHTML =
+        '<div class="cat-top">'+
+          '<div class="cat-name"><span>'+c.icon+'</span>'+c.name+'</div>'+
+          '<div class="cat-fig '+figClass+'">'+figText+'</div>'+
+        '</div>'+
+        '<div class="bar"><span class="'+barClass+'" style="width:'+pct+'%"></span></div>';
+      cats.appendChild(row);
+    });
+
+    // Transactions
+    var tx = el("#txns"); tx.innerHTML = "";
+    if (!state.txns.length){
+      tx.innerHTML = '<div class="empty"><div class="big">🧾</div>No transactions yet.<br>Add your first record to get started.</div>';
+    } else {
+      var sorted = state.txns.slice().sort(function(a,b){ return b.ts - a.ts; });
+      sorted.forEach(function(t){
+        var isInc = t.type === "income";
+        var row = document.createElement("div");
+        row.className = "txn";
+        row.innerHTML =
+          '<div class="ic '+(isInc?"inc":"exp")+'">'+(isInc?"↓":"↑")+'</div>'+
+          '<div class="desc"><div class="t">'+esc(t.desc)+'</div><div class="s">'+esc(t.cat)+'</div></div>'+
+          '<div class="amt num '+(isInc?"inc":"exp")+'">'+(isInc?"+":"−")+fmt(t.amount).replace("−","")+'</div>'+
+          '<button class="del" title="Delete" aria-label="Delete transaction">'+
+            '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'+
+          '</button>';
+        row.querySelector(".del").addEventListener("click", function(){ removeTxn(t.id); });
+        tx.appendChild(row);
+      });
+    }
+
+    // update currency symbols
+    el("#amtSym").textContent = sym();
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+
+  // ---------- Category dropdown ----------
+  function fillCategories(){
+    var sel = el("#category");
+    var list = typeVal === "income" ? INCOME_CATS : EXPENSE_CATS;
+    var prev = sel.value;
+    sel.innerHTML = "";
+    list.forEach(function(c){
+      var o = document.createElement("option");
+      o.value = c.name; o.textContent = c.icon + "  " + c.name;
+      sel.appendChild(o);
+    });
+    // keep selection if still valid
+    if (prev && list.some(function(c){ return c.name === prev; })) sel.value = prev;
+  }
+
+  // ---------- Actions ----------
+  function addTxn(e){
+    e.preventDefault();
+    var desc = el("#desc").value.trim();
+    var amount = parseFloat(el("#amount").value);
+    var cat = el("#category").value;
+    if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
+    if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
+    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:Date.now() });
+    save(); render();
+    el("#addForm").reset();
+    el("#suggest").classList.remove("show");
+    toast(typeVal === "income" ? "Income added ✓" : "Expense added ✓");
+    el("#desc").focus();
+  }
+  function removeTxn(tid){
+    state.txns = state.txns.filter(function(t){ return t.id !== tid; });
+    save(); render();
+    toast("Transaction deleted");
+  }
+  function clearAll(){
+    if (!state.txns.length){ toast("Nothing to clear"); return; }
+    if (!confirm("Delete ALL transactions? This cannot be undone.")) return;
+    state.txns = []; save(); render();
+    toast("All transactions cleared");
+  }
+
+  // ---------- Type toggle ----------
+  function setType(t){
+    typeVal = t;
+    el("#btnExp").className = t==="expense" ? "on-exp" : "";
+    el("#btnInc").className = t==="income" ? "on-inc" : "";
+    fillCategories();
+  }
+
+  // ---------- AI suggestion ----------
+  // Returns a category name for a lowercased text blob, or null.
+  function suggestCategory(text){
+    for (var i=0;i<KEYWORDS.length;i++){
+      for (var j=0;j<KEYWORDS[i].words.length;j++){
+        if (text.indexOf(KEYWORDS[i].words[j]) !== -1) return KEYWORDS[i].cat;
+      }
+    }
+    return null;
+  }
+  var pendingSuggest = null;
+  function updateSuggest(){
+    var d = el("#desc").value.toLowerCase();
+    var box = el("#suggest");
+    if (typeVal !== "expense" || d.length < 2){ box.classList.remove("show"); pendingSuggest = null; return; }
+    var found = suggestCategory(d);
+    if (found && found !== el("#category").value){
+      pendingSuggest = found;
+      el("#suggestText").innerHTML = "✨ Looks like <b>" + esc(found) + "</b>";
+      box.classList.add("show");
+    } else {
+      box.classList.remove("show"); pendingSuggest = null;
+    }
+  }
+  function applySuggest(){
+    if (pendingSuggest){ el("#category").value = pendingSuggest; el("#suggest").classList.remove("show"); pendingSuggest = null; }
+  }
+
+  // ---------- Goals modal ----------
+  function openGoals(){
+    var list = el("#goalList"); list.innerHTML = "";
+    EXPENSE_CATS.forEach(function(c){
+      var row = document.createElement("div");
+      row.className = "goal-row";
+      row.innerHTML =
+        '<div class="gname"><span>'+c.icon+'</span>'+c.name+'</div>'+
+        '<div class="ginput"><span class="sym">'+sym()+'</span>'+
+          '<input class="num" type="number" min="0" step="50" data-cat="'+esc(c.name)+'" value="'+(state.limits[c.name]||0)+'" /></div>';
+      list.appendChild(row);
+    });
+    el("#scrim").classList.add("show");
+  }
+  function closeGoals(){ el("#scrim").classList.remove("show"); }
+  function saveGoals(){
+    var inputs = el("#goalList").querySelectorAll("input[data-cat]");
+    inputs.forEach(function(inp){
+      var v = parseFloat(inp.value);
+      state.limits[inp.getAttribute("data-cat")] = (v > 0) ? v : 0;
+    });
+    save(); render(); closeGoals();
+    toast("Monthly limits updated ✓");
+  }
+
+  // ---------- Toast ----------
+  var toastTimer;
+  function toast(msg){
+    var t = el("#toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ---------- Wire up ----------
+  el("#addForm").addEventListener("submit", addTxn);
+  el("#btnExp").addEventListener("click", function(){ setType("expense"); updateSuggest(); });
+  el("#btnInc").addEventListener("click", function(){ setType("income"); });
+  el("#desc").addEventListener("input", updateSuggest);
+  el("#applySuggest").addEventListener("click", applySuggest);
+  el("#currency").addEventListener("change", function(){ state.currency = this.value; save(); render(); });
+  el("#goalsBtn").addEventListener("click", openGoals);
+  el("#editGoals").addEventListener("click", openGoals);
+  el("#closeModal").addEventListener("click", closeGoals);
+  el("#cancelGoals").addEventListener("click", closeGoals);
+  el("#saveGoals").addEventListener("click", saveGoals);
+  el("#scrim").addEventListener("click", function(e){ if (e.target === this) closeGoals(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeGoals(); });
+  el("#clearAll").addEventListener("click", clearAll);
+  var syncFn = function(){ save(); toast("Saved to this device ✓"); };
+  el("#syncBtn").addEventListener("click", syncFn);
+  el("#syncNow").addEventListener("click", syncFn);
+
+  // ---------- GCash auto-ingest (called by native Android listener) ----------
+  // Parses a GCash notification / SMS body and returns a transaction, or null.
+  function parseGcash(text){
+    if (!text) return null;
+    var t = String(text).replace(/\s+/g, " ").trim();
+    var low = t.toLowerCase();
+    // amount: "PHP 500.00", "P500", "₱1,250.50", "PHP1,000"
+    var m = t.match(/(?:php|p|₱)\s?([0-9][0-9,]*\.?[0-9]{0,2})/i);
+    if (!m) return null;
+    var amount = parseFloat(m[1].replace(/,/g, ""));
+    if (!(amount > 0)) return null;
+
+    var isIncome = /(received|credited|refund|cash\s?in|added to your|you got)/i.test(low);
+    var isExpense = /(sent|paid|payment|purchase|debited|cash\s?out|transferred to|bills? payment|you have paid)/i.test(low);
+    var type = isIncome && !isExpense ? "income" : "expense";
+
+    // counterparty
+    var who = "";
+    var wm = t.match(/(?:from|to|at|for)\s+([A-Z0-9][A-Za-z0-9 .,'&*-]{2,40})/);
+    if (wm) who = wm[1]
+      .replace(/\s+(w\/|has|new balance|new|ref|on|is|\d).*$/i, "")  // cut trailing "New balance…", "has been…", refs, dates
+      .replace(/[.\s]+$/, "")                                        // strip trailing dots/spaces
+      .trim();
+
+    // category guess
+    var cat = type === "income" ? "Allowance & Aid" : "Other";
+    if (type === "expense"){
+      var found = suggestCategory(low + " " + who.toLowerCase());
+      if (found) cat = found;
+      else if (/bills?\s?payment|meralco|maynilad|converge|pldt/i.test(low)) cat = "Rent & Utilities";
+    }
+    var desc = "GCash" + (who ? " · " + who : (type === "income" ? " Cash In" : " Payment"));
+    return { desc: desc, amount: Math.round(amount*100)/100, type: type, cat: cat };
+  }
+
+  window.UniBudget = window.UniBudget || {};
+  // Native side calls: window.UniBudget.ingestGcash("You have received PHP 500.00 from ...")
+  window.UniBudget.ingestGcash = function(text){
+    if (!currentUser || !state) return { ok:false, reason:"not-logged-in" };
+    var parsed = parseGcash(text);
+    if (!parsed) return { ok:false, reason:"unparsed" };
+    parsed.id = id(); parsed.ts = Date.now(); parsed.source = "gcash-auto";
+    // de-dup: same amount+type in the last 90s
+    var dup = state.txns.some(function(x){
+      return x.source === "gcash-auto" && x.amount === parsed.amount &&
+             x.type === parsed.type && (Date.now() - x.ts) < 90000;
+    });
+    if (dup) return { ok:false, reason:"duplicate" };
+    state.txns.push(parsed);
+    save(); render();
+    toast((parsed.type==="income"?"↓ Auto-added ":"↑ Auto-added ")+fmt(parsed.amount)+" from GCash");
+    return { ok:true, txn:parsed };
+  };
+  // convenience for the native bridge to check readiness
+  window.UniBudget.isReady = function(){ return !!(currentUser && state); };
+
+  // =====================================================================
+  //  AUTH — device-account backend, auto-upgrades to Supabase when the
+  //  cloud client is present (injected in the native Android build).
+  // =====================================================================
+  var USERS_KEY = "unibudget:users";
+  var SESSION_KEY = "unibudget:session";
+
+  function readUsers(){ try { return JSON.parse(localStorage.getItem(USERS_KEY)) || {}; } catch(e){ return {}; } }
+  function writeUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+
+  async function hashPw(pw, salt){
+    var data = new TextEncoder().encode(salt + "::" + pw);
+    var buf = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+  }
+  function randSalt(){ var a = new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a).map(function(b){ return b.toString(16).padStart(2,"0"); }).join(""); }
+
+  var cloudOn = !!(window.Cloud && Cloud.enabled);
+  var Auth = {
+    async signup(name, email, pass){
+      email = email.toLowerCase().trim();
+      if (cloudOn) return Cloud.signup(name, email, pass);
+      var users = readUsers();
+      if (users[email]) throw new Error("An account with this email already exists. Try logging in.");
+      var salt = randSalt();
+      users[email] = { name: name || email.split("@")[0], salt: salt, hash: await hashPw(pass, salt) };
+      writeUsers(users);
+      return { email: email, name: users[email].name };
+    },
+    async login(email, pass){
+      email = email.toLowerCase().trim();
+      if (cloudOn) return Cloud.login(email, pass);
+      var users = readUsers();
+      var u = users[email];
+      if (!u) throw new Error("No account found for that email. Sign up first.");
+      var h = await hashPw(pass, u.salt);
+      if (h !== u.hash) throw new Error("Incorrect password. Please try again.");
+      return { email: email, name: u.name };
+    },
+    logout(){ localStorage.removeItem(SESSION_KEY); if (cloudOn && Cloud.logout) Cloud.logout(); },
+    saveSession(user){ localStorage.setItem(SESSION_KEY, JSON.stringify(user)); },
+    getSession(){ try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; } }
+  };
+
+  // ---------- Auth UI ----------
+  var authMode = "login";
+  function setAuthMode(mode){
+    authMode = mode;
+    var isSignup = mode === "signup";
+    el("#tabLogin").classList.toggle("on", !isSignup);
+    el("#tabSignup").classList.toggle("on", isSignup);
+    el("#nameField").style.display = isSignup ? "block" : "none";
+    el("#authSubmit").textContent = isSignup ? "Create account" : "Log in";
+    el("#auPass").setAttribute("autocomplete", isSignup ? "new-password" : "current-password");
+    hideAuthErr();
+  }
+  function showAuthErr(msg){ var e = el("#authErr"); e.textContent = msg; e.classList.add("show"); }
+  function hideAuthErr(){ el("#authErr").classList.remove("show"); }
+
+  async function submitAuth(e){
+    e.preventDefault();
+    hideAuthErr();
+    var name = el("#auName").value.trim();
+    var email = el("#auEmail").value.trim();
+    var pass = el("#auPass").value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showAuthErr("Enter a valid email address.");
+    if (pass.length < 6) return showAuthErr("Password must be at least 6 characters.");
+    if (authMode === "signup" && !name) return showAuthErr("Enter your name.");
+    var btn = el("#authSubmit"); btn.disabled = true; btn.textContent = "Please wait…";
+    try {
+      var user = authMode === "signup" ? await Auth.signup(name, email, pass) : await Auth.login(email, pass);
+      Auth.saveSession(user);
+      enterApp(user);
+    } catch (err) {
+      showAuthErr(err.message || "Something went wrong. Try again.");
+    } finally {
+      btn.disabled = false; btn.textContent = authMode === "signup" ? "Create account" : "Log in";
+    }
+  }
+
+  // ---------- Session lifecycle ----------
+  function enterApp(user){
+    currentUser = user;
+    state = loadState();
+    document.body.classList.add("authed");
+    // header user chip
+    var initial = (user.name || user.email).trim().charAt(0).toUpperCase();
+    el("#avatarBtn").textContent = initial || "U";
+    el("#menuName").textContent = user.name || "Student";
+    el("#menuEmail").textContent = user.email;
+    var ae = el("#acctEmail"); if (ae) ae.textContent = (user.name ? user.name + " · " : "") + user.email;
+    // init app view
+    el("#currency").value = state.currency;
+    setType("expense");
+    render();
+  }
+  function logout(){
+    Auth.logout();
+    currentUser = null; state = null;
+    document.body.classList.remove("authed");
+    el("#menuPop").classList.remove("show");
+    el("#authForm").reset();
+    setAuthMode("login");
+  }
+
+  // ---------- Wire auth ----------
+  el("#tabLogin").addEventListener("click", function(){ setAuthMode("login"); });
+  el("#tabSignup").addEventListener("click", function(){ setAuthMode("signup"); });
+  el("#authForm").addEventListener("submit", submitAuth);
+  el("#pwToggle").addEventListener("click", function(){
+    var p = el("#auPass"); var show = p.type === "password";
+    p.type = show ? "text" : "password"; this.textContent = show ? "Hide" : "Show";
+  });
+  el("#avatarBtn").addEventListener("click", function(e){ e.stopPropagation(); el("#menuPop").classList.toggle("show"); });
+  document.addEventListener("click", function(){ el("#menuPop").classList.remove("show"); });
+  el("#menuPop").addEventListener("click", function(e){ e.stopPropagation(); });
+  el("#menuGoals").addEventListener("click", function(){ el("#menuPop").classList.remove("show"); openGoals(); });
+  el("#menuLogout").addEventListener("click", logout);
+  // Always-visible Account panel controls (don't depend on the header)
+  el("#limitsBtn2").addEventListener("click", openGoals);
+  el("#logoutBtn2").addEventListener("click", logout);
+
+  // Connect GCash (opens the native setup; friendly message on the web preview)
+  function openGcashSetup(){
+    if (window.GcashSetup && window.GcashSetup.open) window.GcashSetup.open();
+    else toast("GCash auto-detection runs in the installed Android app.");
+  }
+  el("#connectGcashBtn").addEventListener("click", openGcashSetup);
+
+  // Bottom quick-action bar
+  el("#tabbar").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    var act = b.getAttribute("data-act");
+    if (act === "home") window.scrollTo({ top: 0, behavior: "smooth" });
+    else if (act === "goals") openGoals();
+    else if (act === "logout") logout();
+    else if (act === "gcash") openGcashSetup();
+  });
+
+  // Show the runtime platform on the build badge (diagnostic)
+  try {
+    var plat = (window.Capacitor && Capacitor.getPlatform) ? Capacitor.getPlatform() : "web";
+    var vb = document.getElementById("verBadge");
+    if (vb) vb.textContent = "v6 · " + plat;
+  } catch (e) {}
+
+  // mode chip + note reflect cloud vs device
+  if (cloudOn){
+    el("#modeChip").textContent = "☁ Cloud sync";
+    el("#authNote").textContent = "Your account and data sync securely across devices.";
+  }
+
+  // ---------- Boot ----------
+  (function boot(){
+    setAuthMode("login");
+    var s = Auth.getSession();
+    if (s && s.email) { enterApp(s); }
+    else { el("#auEmail").focus(); }
+  })();
+})();
+</script>
+
+<script src="gcash-bridge.js"></script>
+</body>
+</html>

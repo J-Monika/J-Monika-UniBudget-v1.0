@@ -1,0 +1,131 @@
+package com.unibudget.app;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Build;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
+import org.json.JSONArray;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Central sink for GCash messages captured from notifications or SMS.
+ *
+ *  - If the app (WebView) is alive, the message is handed straight to JS.
+ *  - Otherwise it is queued in SharedPreferences and drained when the app opens.
+ *  - Either way a system notification is posted so the user is alerted immediately.
+ */
+public class GcashCaptureStore {
+
+    private static final String PREFS = "unibudget_gcash";
+    private static final String KEY_QUEUE = "queue";
+    private static final String CHANNEL_ID = "gcash_alerts";
+    private static final int NOTIF_BASE = 4200;
+
+    // Set by the Capacitor plugin while the WebView is running.
+    public static volatile GcashWatcherPlugin livePlugin = null;
+
+    // Matches "PHP 500.00", "P1,250", "₱1,000.50"
+    private static final Pattern AMOUNT =
+            Pattern.compile("(?:php|₱|p)\\s?([0-9][0-9,]*\\.?[0-9]{0,2})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOOKS_LIKE =
+            Pattern.compile("(received|sent|paid|payment|debited|credited|cash\\s?in|cash\\s?out|transfer)",
+                    Pattern.CASE_INSENSITIVE);
+
+    /** Returns true if the text looks like a GCash transaction alert. */
+    public static boolean looksLikeGcash(String text) {
+        if (text == null) return false;
+        return AMOUNT.matcher(text).find() && LOOKS_LIKE.matcher(text).find();
+    }
+
+    /** Entry point called by the notification listener and SMS receiver. */
+    public static void handle(Context ctx, String text) {
+        if (!looksLikeGcash(text)) return;
+
+        GcashWatcherPlugin plugin = livePlugin;
+        if (plugin != null) {
+            plugin.emitMessage(text);      // app open -> JS ingests live (JS de-dupes)
+        } else {
+            enqueue(ctx, text);            // app closed -> keep for next launch
+        }
+        postNotification(ctx, text);       // always alert the user
+    }
+
+    private static synchronized void enqueue(Context ctx, String text) {
+        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        JSONArray arr;
+        try { arr = new JSONArray(p.getString(KEY_QUEUE, "[]")); }
+        catch (Exception e) { arr = new JSONArray(); }
+        arr.put(text);
+        p.edit().putString(KEY_QUEUE, arr.toString()).apply();
+    }
+
+    public static synchronized List<String> drain(Context ctx) {
+        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        List<String> out = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(p.getString(KEY_QUEUE, "[]"));
+            for (int i = 0; i < arr.length(); i++) out.add(arr.getString(i));
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    public static synchronized void clear(Context ctx) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+           .edit().putString(KEY_QUEUE, "[]").apply();
+    }
+
+    private static void ensureChannel(Context ctx) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel ch = new NotificationChannel(
+                    CHANNEL_ID, "GCash alerts", NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("Auto-logged GCash transactions");
+            NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+            if (nm != null) nm.createNotificationChannel(ch);
+        }
+    }
+
+    private static void postNotification(Context ctx, String text) {
+        ensureChannel(ctx);
+
+        String amount = "";
+        Matcher m = AMOUNT.matcher(text);
+        if (m.find()) amount = "₱" + m.group(1);
+        boolean income = Pattern.compile("received|credited|cash\\s?in|refund", Pattern.CASE_INSENSITIVE)
+                .matcher(text).find();
+        String title = income ? ("Money in " + amount).trim() : ("Payment " + amount).trim();
+        String body = "Auto-logged to UniBudget · tap to review";
+
+        Intent open = new Intent(ctx, MainActivity.class);
+        open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pi = PendingIntent.getActivity(ctx, 0, open, flags);
+
+        NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setSmallIcon(ctx.getApplicationInfo().icon)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pi);
+
+        try {
+            NotificationManagerCompat.from(ctx).notify(NOTIF_BASE + (int) (System.currentTimeMillis() % 1000), b.build());
+        } catch (SecurityException ignored) {
+            // POST_NOTIFICATIONS not granted yet on Android 13+; capture still works.
+        }
+    }
+}

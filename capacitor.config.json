@@ -1,0 +1,11 @@
+{
+  "appId": "com.unibudget.app",
+  "appName": "UniBudget",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#4F46E5"
+    }
+  }
+}

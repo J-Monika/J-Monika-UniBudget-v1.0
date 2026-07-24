@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+**/build/
+.gradle/
+android/.gradle/
+android/local.properties
+android/app/release/
+android/app/src/main/assets/public/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep the ready-to-install APK at repo root (UniBudget-v6.apk), ignore stray older ones
+UniBudget-v4.apk
+UniBudget-v5.apk
+UniBudget-debug.apk

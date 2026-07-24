@@ -1,0 +1,19 @@
+{
+  "name": "unibudget",
+  "version": "1.0.0",
+  "description": "UniBudget — student budget tracker with GCash auto-detection",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "build:apk": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/local-notifications": "^6.1.3",
+    "@supabase/supabase-js": "^2.110.8"
+  }
+}
