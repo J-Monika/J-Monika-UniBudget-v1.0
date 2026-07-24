@@ -418,6 +418,85 @@
     padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
   }
 
+  /* ================= v9 — Hybrid juice layer ================= */
+  /* Reward accents (work on both themes) */
+  :root { --gold:#f59e0b; --gold-2:#fbbf24; --joy:#ec4899; --joy-2:#a855f7; }
+
+  /* Global press feedback */
+  .submit, .acct-btn, .h-btn, .type-toggle button, #tabbar button, .gc-btn, .ghost, .avatar { will-change: transform; }
+  .submit:active, .acct-btn:active, .type-toggle button:active, .gc-btn:active, .ghost:active { transform: scale(.97); }
+
+  @keyframes pop { 0%{transform:scale(.6);opacity:0} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+  @keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  @keyframes shine { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+  @keyframes ring { 0%{box-shadow:0 0 0 0 rgba(245,158,11,.5)} 100%{box-shadow:0 0 0 14px rgba(245,158,11,0)} }
+
+  /* Mascot — original SVG coin character ("Baon", the ipon buddy) */
+  .mascot { width:80px; height:80px; flex-shrink:0; animation:floaty 3.2s ease-in-out infinite;
+    filter:drop-shadow(0 10px 18px rgba(245,158,11,.42)); }
+  .mascot svg { width:100%; height:100%; display:block; }
+  .mascot.sm { width:46px; height:46px; animation:none; filter:drop-shadow(0 5px 10px rgba(245,158,11,.35)); }
+
+  /* Hero forecaster upgrade */
+  .fc.hero-card { background:linear-gradient(155deg,#5b53f2,#4338ca 55%,#3f2fb0); color:#fff; border:0; overflow:hidden; position:relative; }
+  .fc.hero-card::after { content:""; position:absolute; inset:0;
+    background:radial-gradient(420px 180px at 115% -20%, rgba(255,255,255,.18), transparent 60%); pointer-events:none; }
+  .fc.hero-card .sec-head h2 { color:#fff; }
+  .fc.hero-card .sec-head .side.link { color:#dcd9ff; }
+  .fc.hero-card .fc-hero .amt { color:#fff !important; }
+  .fc.hero-card .fc-hero .amt.low { color:#ffe08a !important; }
+  .fc.hero-card .fc-hero .amt.broke { color:#ffc4c4 !important; }
+  .fc.hero-card .fc-hero .per, .fc.hero-card .fc-sub { color:#c9c5ff; }
+  .fc.hero-card .fc-sub b { color:#fff; }
+  .fc.hero-card .fc-track { background:rgba(255,255,255,.18); }
+  .fc.hero-card .fc-empty { color:#d7d4ff; } .fc.hero-card .fc-empty b { color:#fff; }
+  .fc.hero-card .fc-streak { background:rgba(255,255,255,.16); color:#fff; }
+  .hero-chips { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:999px;
+    font-size:12.5px; font-weight:800; background:rgba(255,255,255,.16); color:#fff; cursor:pointer; border:0; font-family:inherit; }
+  .chip:active { transform:scale(.95); }
+  .chip .lv { background:var(--gold); color:#3a2a00; border-radius:999px; padding:1px 7px; font-size:11px; }
+  .xp-track { height:6px; border-radius:999px; background:rgba(255,255,255,.18); margin-top:12px; overflow:hidden; }
+  .xp-track > span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--gold-2),var(--gold)); transition:width .6s; }
+  .xp-label { font-size:11.5px; color:#cfcbff; font-weight:700; margin-top:6px; letter-spacing:.02em; }
+
+  /* Onboarding */
+  #onb { position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center; padding:22px;
+    background:radial-gradient(1000px 500px at 50% -10%, rgba(91,83,242,.35), transparent 60%), var(--page); }
+  #onb.show { display:flex; }
+  .onb-card { width:100%; max-width:400px; background:var(--card); border:1px solid var(--line); border-radius:24px;
+    box-shadow:var(--shadow); padding:28px 26px; text-align:center; animation:pop .4s ease both; }
+  .onb-card .mascot { margin:0 auto 16px; }
+  .onb-step h3 { margin:0 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; }
+  .onb-step p { margin:0 0 18px; color:var(--muted); font-size:14.5px; line-height:1.5; }
+  .onb-dots { display:flex; gap:6px; justify-content:center; margin-top:18px; }
+  .onb-dots i { width:7px; height:7px; border-radius:50%; background:var(--track); }
+  .onb-dots i.on { background:var(--accent); width:20px; border-radius:999px; }
+  .onb-field { text-align:left; margin-bottom:12px; }
+  .onb-field label { font-size:13px; font-weight:700; color:var(--ink-soft); display:block; margin-bottom:6px; }
+
+  /* Achievements */
+  .lvl-head { padding:6px 26px 4px; display:flex; align-items:center; gap:14px; }
+  .lvl-ring { width:60px; height:60px; border-radius:50%; display:grid; place-items:center; flex-shrink:0;
+    font-weight:800; font-size:20px; color:#3a2a00; background:linear-gradient(160deg,var(--gold-2),var(--gold)); box-shadow:0 6px 16px rgba(245,158,11,.35); }
+  .lvl-meta { flex:1; } .lvl-meta .t { font-weight:800; font-size:16px; } .lvl-meta .s { font-size:12.5px; color:var(--muted); }
+  .badge-grid { padding:16px 24px 8px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .badge { text-align:center; padding:14px 8px; border-radius:16px; background:var(--page); border:1px solid var(--line); transition:transform .15s; }
+  .badge.earned { background:var(--accent-soft); border-color:var(--accent); animation:pop .4s both; }
+  .badge .ic { font-size:30px; filter:grayscale(1); opacity:.45; }
+  .badge.earned .ic { filter:none; opacity:1; }
+  .badge .bn { font-size:11.5px; font-weight:800; margin-top:6px; }
+  .badge .bd { font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.3; }
+
+  /* Celebration confetti */
+  #confetti { position:fixed; inset:0; z-index:400; pointer-events:none; display:none; }
+  #confetti.show { display:block; }
+  .celebrate-toast { background:linear-gradient(120deg,var(--joy-2),var(--joy)) !important; color:#fff !important; }
+
+  /* count-up + modal entrance */
+  .modal, .auth-card { animation:pop .32s ease both; }
+  @media (prefers-reduced-motion: reduce){ .mascot{animation:none} .modal,.auth-card,.onb-card,.badge.earned{animation:none} }
+
   /* Build/version badge — proves which build is installed */
   #verBadge {
     position: fixed; right: 10px; top: 10px; z-index: 200;
@@ -455,7 +534,8 @@
 <!-- ============ AUTH SCREEN ============ -->
 <div id="auth">
   <div class="auth-card">
-    <div class="auth-brand"><span class="logo">🎓</span><span>UniBudget</span></div>
+    <div class="mascot" style="margin:0 auto 12px"></div>
+    <div class="auth-brand" style="justify-content:center"><span class="logo">🎓</span><span>UniBudget</span></div>
     <div class="auth-sub">Smart budgeting for students <span class="mode-chip" id="modeChip">Device mode</span></div>
 
     <div class="auth-tabs">
@@ -543,7 +623,7 @@
         </div>
       </section>
 
-      <section class="card fc" id="forecastCard">
+      <section class="card fc hero-card" id="forecastCard">
         <div class="sec-head">
           <h2>💸 Safe to Spend</h2>
           <span class="side link" id="editAllowance">Set baon</span>
@@ -590,6 +670,7 @@
           <div class="acct-email" id="acctEmail">—</div>
           <button class="acct-btn gcash" id="connectGcashBtn">🔗 Connect GCash <span class="acct-hint">auto-log transactions</span></button>
           <button class="acct-btn" id="baonBtn">💸 My baon <span class="acct-hint">safe-to-spend</span></button>
+          <button class="acct-btn" id="rewardsBtn">🏆 Rewards <span class="acct-hint" id="rewardsHint">Level 1</span></button>
           <button class="acct-btn" id="limitsBtn2">🎯 Monthly limits</button>
           <button class="acct-btn danger" id="logoutBtn2">↪ Log out</button>
         </div>
@@ -671,14 +752,38 @@
   </div>
 </div>
 
+<!-- Achievements modal -->
+<div class="scrim" id="achScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="achTitle">
+    <div class="modal-head">
+      <div><h3 id="achTitle">🏆 Rewards</h3><p>Level up by tracking, saving, and keeping your baon on budget.</p></div>
+      <button class="x" id="achClose" aria-label="Close">✕</button>
+    </div>
+    <div class="lvl-head">
+      <div class="lvl-ring" id="lvlRing">1</div>
+      <div class="lvl-meta">
+        <div class="t" id="lvlTitle">Baon Newbie</div>
+        <div class="s" id="lvlSub">0 XP</div>
+        <div class="xp-track" style="background:var(--track)"><span id="lvlBar" style="width:0%"></span></div>
+      </div>
+    </div>
+    <div class="badge-grid" id="badgeGrid"></div>
+    <div class="modal-foot"><button class="submit" id="achDone" style="flex:1">Nice!</button></div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+
 <div class="toast" id="toast"></div>
 
 <nav id="tabbar" aria-label="Quick actions">
   <button type="button" data-act="home"><span>🏠</span>Home</button>
-  <button type="button" data-act="gcash"><span>🔗</span>GCash</button>
-  <button type="button" data-act="goals"><span>🎯</span>Goals</button>
+  <button type="button" data-act="gcash"><span>🔗</span>Wallets</button>
+  <button type="button" data-act="rewards"><span>🏆</span>Rewards</button>
   <button type="button" data-act="logout" class="danger"><span>↪</span>Log out</button>
 </nav>
+
+<div id="onb"><div class="onb-card" id="onbCard"></div></div>
 </div><!-- /#app -->
 
 
@@ -768,6 +873,8 @@
     setDirty(false);
     // Per-row cloud sync with offline outbox (no-op in device mode)
     if (window.Cloud && Cloud.pushState) Cloud.pushState(state);
+    // Celebrate any newly-earned badges / level-ups
+    if (typeof checkProgress === "function") checkProgress();
   }
   function setDirty(v){
     dirty = v;
@@ -860,8 +967,9 @@
     // update currency symbols
     el("#amtSym").textContent = sym();
 
-    // Petsa de Peligro forecaster
+    // Petsa de Peligro forecaster + gamification chips
     renderForecast();
+    renderGameChips();
   }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
 
@@ -1069,6 +1177,155 @@
     toast(amount > 0 ? "Baon saved ✓" : "Allowance cleared");
   }
 
+  // =====================================================================
+  //  v9 — Hybrid juice: mascot, gamification, onboarding, celebrations
+  // =====================================================================
+  var MASCOT_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true">'+
+    '<defs><radialGradient id="mg" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></radialGradient></defs>'+
+    '<circle cx="50" cy="53" r="40" fill="url(#mg)" stroke="#d97706" stroke-width="3"/>'+
+    '<circle cx="50" cy="53" r="32" fill="none" stroke="#fcd34d" stroke-width="2.5" opacity=".75"/>'+
+    '<text x="50" y="35" text-anchor="middle" font-size="13" font-weight="900" fill="#7c4a00" font-family="system-ui,sans-serif">₱</text>'+
+    '<circle cx="40" cy="50" r="4.6" fill="#3a2a00"/><circle cx="60" cy="50" r="4.6" fill="#3a2a00"/>'+
+    '<circle cx="41.6" cy="48.4" r="1.5" fill="#fff"/><circle cx="61.6" cy="48.4" r="1.5" fill="#fff"/>'+
+    '<circle cx="31" cy="60" r="4" fill="#f472b6" opacity=".55"/><circle cx="69" cy="60" r="4" fill="#f472b6" opacity=".55"/>'+
+    '<path d="M41 64 Q50 73 59 64" fill="none" stroke="#3a2a00" stroke-width="3.4" stroke-linecap="round"/></svg>';
+  function injectMascots(root){ (root||document).querySelectorAll(".mascot").forEach(function(m){ if(!m.dataset.filled){ m.innerHTML = MASCOT_SVG; m.dataset.filled = "1"; } }); }
+
+  // ---- Gamification ----
+  var XP_PER_LEVEL = 120;
+  var LEVEL_TITLES = ["Baon Newbie","Ipon Trainee","Tipid Rookie","Budget Cadet","Baon Boss","Diskarte Master","Ipon Sensei","Wallet Wizard","Baon Legend"];
+  function levelTitle(lv){ return LEVEL_TITLES[Math.min(lv-1, LEVEL_TITLES.length-1)]; }
+  var BADGES = [
+    { id:"first", icon:"🌱", name:"First Peso", desc:"Log your first record", test:function(st){ return st.txCount>=1; } },
+    { id:"baon", icon:"💸", name:"Baon Boss", desc:"Set your allowance", test:function(st){ return st.hasBaon; } },
+    { id:"auto", icon:"⚡", name:"Auto-Pilot", desc:"Auto-log a wallet alert", test:function(st){ return st.autoCount>=1; } },
+    { id:"streak3", icon:"🔥", name:"On Fire", desc:"3-day tipid streak", test:function(st){ return st.streak>=3; } },
+    { id:"streak7", icon:"🗓️", name:"Week Warrior", desc:"7-day tipid streak", test:function(st){ return st.streak>=7; } },
+    { id:"log10", icon:"📊", name:"Diskarte", desc:"Log 10 records", test:function(st){ return st.txCount>=10; } },
+    { id:"log50", icon:"👑", name:"Ipon Royalty", desc:"Log 50 records", test:function(st){ return st.txCount>=50; } },
+    { id:"safe", icon:"🛡️", name:"Budget Guard", desc:"Stay in the green with baon set", test:function(st){ return st.hasBaon && st.safe; } },
+    { id:"lvl5", icon:"🏆", name:"High Roller", desc:"Reach Level 5", test:function(st){ return st.level>=5; } }
+  ];
+  function computeStats(s){
+    var active = (s.txns||[]).filter(function(t){ return !t.deleted; });
+    var txCount = active.length;
+    var autoCount = active.filter(function(t){ return t.source==="gcash-auto"; }).length;
+    var streak = tipidStreak();
+    var hasBaon = !!(s.allowance && s.allowance.amount>0);
+    var f = computeForecast();
+    var safe = !!(f && f.available>0 && !f.danger);
+    var xp = txCount*5 + autoCount*4 + streak*15 + (hasBaon?25:0);
+    var level = Math.floor(xp/XP_PER_LEVEL)+1;
+    return { txCount:txCount, autoCount:autoCount, streak:streak, hasBaon:hasBaon, safe:safe,
+             xp:xp, level:level, xpInLevel: xp % XP_PER_LEVEL, xpForLevel: XP_PER_LEVEL };
+  }
+  function renderGameChips(){
+    var body = el("#fcBody"); if(!body) return;
+    var st = computeStats(state);
+    var pct = Math.round((st.xpInLevel/st.xpForLevel)*100);
+    var wrap = document.createElement("div");
+    wrap.innerHTML =
+      '<div class="hero-chips">'+
+        '<button class="chip" id="lvlChip"><span class="lv">Lv '+st.level+'</span>'+levelTitle(st.level)+'</button>'+
+      '</div>'+
+      '<div class="xp-track"><span style="width:'+pct+'%"></span></div>'+
+      '<div class="xp-label">'+st.xpInLevel+' / '+st.xpForLevel+' XP → Lv '+(st.level+1)+'</div>';
+    body.appendChild(wrap);
+    var lc = document.getElementById("lvlChip"); if(lc) lc.addEventListener("click", openAchievements);
+    var rh = document.getElementById("rewardsHint"); if(rh) rh.textContent = "Level "+st.level;
+  }
+
+  // ---- Achievements modal ----
+  function openAchievements(){
+    var st = computeStats(state);
+    el("#lvlRing").textContent = st.level;
+    el("#lvlTitle").textContent = levelTitle(st.level);
+    el("#lvlSub").textContent = st.xp+" XP · "+st.xpInLevel+"/"+st.xpForLevel+" to Lv "+(st.level+1);
+    el("#lvlBar").style.width = Math.round(st.xpInLevel/st.xpForLevel*100)+"%";
+    var grid = el("#badgeGrid"); grid.innerHTML = "";
+    BADGES.forEach(function(b){
+      var earned = b.test(st);
+      var d = document.createElement("div"); d.className = "badge"+(earned?" earned":"");
+      d.innerHTML = '<div class="ic">'+b.icon+'</div><div class="bn">'+esc(b.name)+'</div><div class="bd">'+esc(b.desc)+'</div>';
+      grid.appendChild(d);
+    });
+    el("#achScrim").classList.add("show");
+  }
+  function closeAchievements(){ el("#achScrim").classList.remove("show"); }
+
+  // ---- Confetti + celebration ----
+  function confettiBurst(){
+    var c = el("#confetti"); if(!c) return;
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var ctx = c.getContext("2d"); var W = c.width = innerWidth, H = c.height = innerHeight;
+    c.classList.add("show");
+    var cols = ["#f59e0b","#fbbf24","#ec4899","#a855f7","#4f46e5","#16a34a"];
+    var P = []; for (var i=0;i<130;i++) P.push({ x:W/2+(Math.random()-.5)*W*.5, y:H*.28, vx:(Math.random()-.5)*11, vy:Math.random()*-13-4, g:.4+Math.random()*.35, s:6+Math.random()*7, col:cols[i%cols.length], rot:Math.random()*6.28, vr:(Math.random()-.5)*.5 });
+    var t0 = Date.now();
+    (function frame(){
+      var e = Date.now()-t0; ctx.clearRect(0,0,W,H);
+      for (var i=0;i<P.length;i++){ var p=P[i]; p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha=Math.max(0,1-e/1900); ctx.fillStyle=p.col; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.62); ctx.restore(); }
+      if (e<1900) requestAnimationFrame(frame); else { ctx.clearRect(0,0,W,H); c.classList.remove("show"); }
+    })();
+  }
+  function celebrate(msg){
+    confettiBurst();
+    var t = el("#toast"); t.classList.add("celebrate-toast");
+    toast(msg);
+    setTimeout(function(){ t.classList.remove("celebrate-toast"); }, 2600);
+  }
+  // Detect newly-earned badges / level-ups after a change.
+  var _earnedIds = null, _level = null;
+  function progressBaseline(){ var st=computeStats(state); _level=st.level; _earnedIds={}; BADGES.forEach(function(b){ if(b.test(st)) _earnedIds[b.id]=1; }); }
+  function checkProgress(){
+    var st = computeStats(state);
+    if (_earnedIds){
+      var fresh = BADGES.filter(function(b){ return b.test(st) && !_earnedIds[b.id]; });
+      if (fresh.length){ celebrate("🏆 Unlocked: "+fresh[0].name+"!"); }
+      else if (_level!==null && st.level>_level){ celebrate("✨ Level up! You're now "+levelTitle(st.level)+" (Lv "+st.level+")"); }
+    }
+    _level = st.level; _earnedIds = {}; BADGES.forEach(function(b){ if(b.test(st)) _earnedIds[b.id]=1; });
+  }
+
+  // ---- Onboarding ----
+  var onbStep = 0;
+  function showOnboarding(){ onbStep = 0; renderOnb(); el("#onb").classList.add("show"); }
+  function hideOnboarding(){ el("#onb").classList.remove("show"); }
+  function finishOnboarding(){ state.onboarded = true; save(); hideOnboarding(); render(); setTimeout(function(){ celebrate("🪙 Ayos! You're all set — game na!"); }, 250); }
+  function renderOnb(){
+    var native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+    var dots = '<div class="onb-dots"><i class="'+(onbStep===0?"on":"")+'"></i><i class="'+(onbStep===1?"on":"")+'"></i><i class="'+(onbStep===2?"on":"")+'"></i></div>';
+    var card = el("#onbCard"); var html = '<div class="mascot"></div>';
+    if (onbStep===0){
+      html += '<div class="onb-step"><h3>Kumusta! I\'m Baon 🪙</h3><p>Your ipon buddy. I\'ll make sure your baon lasts the whole '+(state.allowance&&state.allowance.period==="monthly"?"month":"week")+' — kaya natin \'to!</p>'+
+        '<button class="submit" id="onbNext">Let\'s go →</button></div>'+dots;
+    } else if (onbStep===1){
+      html += '<div class="onb-step"><h3>How much is your baon?</h3><p>Tell me your allowance and I\'ll compute how much is safe to spend each day.</p>'+
+        '<div class="onb-field"><label>Allowance (₱)</label><input id="onbAmount" class="num" type="number" min="0" step="50" placeholder="e.g. 1500" value="'+((state.allowance&&state.allowance.amount)||"")+'"></div>'+
+        '<div class="onb-field"><label>How often?</label><select id="onbPeriod" class="f"><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>'+
+        '<button class="submit" id="onbNext">Save baon →</button><div style="margin-top:8px"><span class="side link" id="onbSkip" style="color:var(--muted);cursor:pointer;font-weight:700">Skip for now</span></div></div>'+dots;
+    } else {
+      html += '<div class="onb-step"><h3>Auto-track your wallets</h3><p>Connect GCash, Maya, ShopeePay or GrabPay and I\'ll log your spending automatically — wala nang manual!</p>'+
+        '<button class="submit" id="onbConnect">'+(native?"🔗 Connect now":"Got it!")+'</button>'+
+        (native?'<div style="margin-top:8px"><span class="side link" id="onbSkip" style="color:var(--muted);cursor:pointer;font-weight:700">Maybe later</span></div>':'')+'</div>'+dots;
+    }
+    card.innerHTML = html;
+    injectMascots(card);
+    if (onbStep===1){ var pv=el("#onbPeriod"); if(pv && state.allowance) pv.value=state.allowance.period||"weekly"; }
+    var next = document.getElementById("onbNext");
+    if (next) next.addEventListener("click", function(){
+      if (onbStep===1){
+        var amt = parseFloat((el("#onbAmount")||{}).value)||0;
+        var per = (el("#onbPeriod")||{}).value||"weekly";
+        if (amt>0){ state.allowance = { amount:amt, period:per, reserve:(state.allowance&&state.allowance.reserve)||0, anchor: startOfToday() }; save(); }
+      }
+      onbStep++; renderOnb();
+    });
+    var skip = document.getElementById("onbSkip"); if (skip) skip.addEventListener("click", function(){ onbStep++; if(onbStep>2){ finishOnboarding(); } else { renderOnb(); } });
+    var conn = document.getElementById("onbConnect"); if (conn) conn.addEventListener("click", function(){ finishOnboarding(); setTimeout(function(){ if(window.GcashSetup&&window.GcashSetup.open) GcashSetup.open(); }, 400); });
+  }
+
   // ---------- Toast ----------
   var toastTimer;
   function toast(msg){
@@ -1098,7 +1355,12 @@
   el("#alCancel").addEventListener("click", closeAllowance);
   el("#alSave").addEventListener("click", saveAllowance);
   el("#alScrim").addEventListener("click", function(e){ if (e.target === this) closeAllowance(); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); } });
+  // Rewards / achievements
+  el("#rewardsBtn").addEventListener("click", openAchievements);
+  el("#achClose").addEventListener("click", closeAchievements);
+  el("#achDone").addEventListener("click", closeAchievements);
+  el("#achScrim").addEventListener("click", function(e){ if (e.target === this) closeAchievements(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); } });
   el("#clearAll").addEventListener("click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
   el("#syncBtn").addEventListener("click", syncFn);
@@ -1309,7 +1571,10 @@
     // init app view
     el("#currency").value = state.currency;
     setType("expense");
+    injectMascots();
     render();
+    progressBaseline();               // baseline so we don't celebrate on load
+    if (!state.onboarded) setTimeout(showOnboarding, 350);
   }
   function logout(){
     Auth.logout();
@@ -1349,7 +1614,7 @@
     var b = e.target.closest("button"); if (!b) return;
     var act = b.getAttribute("data-act");
     if (act === "home") window.scrollTo({ top: 0, behavior: "smooth" });
-    else if (act === "goals") openGoals();
+    else if (act === "rewards") openAchievements();
     else if (act === "logout") logout();
     else if (act === "gcash") openGcashSetup();
   });
@@ -1358,7 +1623,7 @@
   try {
     var plat = (window.Capacitor && Capacitor.getPlatform) ? Capacitor.getPlatform() : "web";
     var vb = document.getElementById("verBadge");
-    if (vb) vb.textContent = "v8 · " + plat;
+    if (vb) vb.textContent = "v9 · " + plat;
   } catch (e) {}
 
   // mode chip + note reflect cloud vs device
@@ -1369,6 +1634,7 @@
 
   // ---------- Boot ----------
   (function boot(){
+    injectMascots();          // fill the login-screen mascot
     setAuthMode("login");
     var s = Auth.getSession();
     if (s && s.email) { enterApp(s); }
