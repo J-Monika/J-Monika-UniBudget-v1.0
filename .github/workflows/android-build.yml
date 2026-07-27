@@ -1,0 +1,176 @@
+name: UniBudget Android CI — Build & Release APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 – JS unit tests
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: JS Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run notification engine unit tests
+        run: npm test
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 – Android debug APK build
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-debug:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Override local.properties for CI SDK path
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+
+      - name: Override gradle.properties — remove local JDK pin for CI
+        run: |
+          sed -i '/org.gradle.java.home/d' android/gradle.properties
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniBudget-debug-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 – GitHub Release (runs only on version tags like v10.0)
+  # ─────────────────────────────────────────────────────────────────────────────
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-debug
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Override local.properties for CI SDK path
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+
+      - name: Override gradle.properties — remove local JDK pin for CI
+        run: |
+          sed -i '/org.gradle.java.home/d' android/gradle.properties
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK with version tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "UniBudget-${TAG}-debug.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "UniBudget ${{ github.ref_name }}"
+          body: |
+            ## UniBudget ${{ github.ref_name }}
+
+            ### What's in this release
+            - Budget alert system: 75% and 100% spending threshold notifications
+            - Custom thresholds (percentage / fixed-amount / amount-remaining)
+            - GCash / Maya / ShopeePay / GrabPay auto-detection via notification listener
+            - In-app warning banners + Android system push notifications
+            - Per-category budget limits with live progress bars
+            - Petsa de Peligro daily spend forecaster
+            - Gamification: XP, levels, badges
+
+            ### Sideload Installation
+            1. Download `UniBudget-${{ github.ref_name }}-debug.apk`
+            2. Transfer to your Android phone
+            3. Tap the file, allow unknown sources, install
+            4. Open UniBudget → sign up or log in
+          files: UniBudget-${{ github.ref_name }}-debug.apk
+          draft: false
+          prerelease: false

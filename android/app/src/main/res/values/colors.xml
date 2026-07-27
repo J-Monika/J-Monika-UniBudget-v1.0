@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary brand color — indigo #4F46E5, matches the web app accent -->
+    <color name="colorPrimary">#4F46E5</color>
+    <!-- Darker shade for status bar tint (Material 2 compat) -->
+    <color name="colorPrimaryDark">#4338CA</color>
+    <!-- Accent / secondary interactive color -->
+    <color name="colorAccent">#7C7BF5</color>
+
+    <!-- Notification icon background tint (used by LocalNotifications plugin) -->
+    <color name="ic_stat_icon_color">#4F46E5</color>
+
+    <!-- Splash / launch screen background -->
+    <color name="splash_background">#4F46E5</color>
+</resources>
