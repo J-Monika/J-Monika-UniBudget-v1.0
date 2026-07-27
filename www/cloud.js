@@ -88,7 +88,7 @@
         if (res.error) throw res.error;
       }
       var res2 = await sb.from("budgets").upsert(
-        { user_id: u.id, data: { currency: state.currency, limits: state.limits }, updated_at: new Date().toISOString() },
+        { user_id: u.id, data: { currency: state.currency, limits: state.limits, notifications: state.notifications }, updated_at: new Date().toISOString() },
         { onConflict: "user_id" });
       if (res2.error) throw res2.error;
 
@@ -129,6 +129,7 @@
       if (sres.data && sres.data.data) {
         if (sres.data.data.currency) cache.currency = sres.data.data.currency;
         if (sres.data.data.limits && Object.keys(sres.data.data.limits).length) { cache.limits = sres.data.data.limits; changedLocal = true; }
+        if (sres.data.data.notifications) { cache.notifications = sres.data.data.notifications; changedLocal = true; }
       }
       cache.txns = Object.keys(byId).map(function (k) { return byId[k]; });
       writeCache(email, cache);

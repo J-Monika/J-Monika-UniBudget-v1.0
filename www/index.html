@@ -497,6 +497,43 @@
   .modal, .auth-card { animation:pop .32s ease both; }
   @media (prefers-reduced-motion: reduce){ .mascot{animation:none} .modal,.auth-card,.onb-card,.badge.earned{animation:none} }
 
+  /* Notification Banners & Cards */
+  .notif-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; border-radius: 14px; margin-bottom: 12px;
+    background: #fffbe0; border: 1px solid #fde047; color: #713f12;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04); font-size: 13.5px; line-height: 1.4;
+    animation: pop .3s ease both;
+  }
+  @media (prefers-color-scheme: dark) {
+    .notif-banner { background: #2e260e; border-color: #713f12; color: #fef08a; }
+  }
+  .notif-banner.danger {
+    background: #fef2f2; border-color: #fca5a5; color: #991b1b;
+  }
+  @media (prefers-color-scheme: dark) {
+    .notif-banner.danger { background: #311313; border-color: #991b1b; color: #fecaca; }
+  }
+  .notif-banner .msg { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .notif-banner .msg .ic { font-size: 18px; }
+  .notif-banner .dismiss-btn {
+    border: 0; background: transparent; cursor: pointer; color: inherit;
+    font-size: 16px; opacity: .7; padding: 2px 6px; border-radius: 6px; font-weight: bold;
+  }
+  .notif-banner .dismiss-btn:hover { opacity: 1; background: rgba(0,0,0,.06); }
+
+  /* Threshold List Item in Settings */
+  .thresh-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border-radius: 12px; background: var(--page); border: 1px solid var(--line);
+  }
+  .thresh-info { display: flex; flex-direction: column; gap: 2px; }
+  .thresh-title { font-weight: 700; font-size: 13px; color: var(--ink); }
+  .thresh-sub { font-size: 11.5px; color: var(--muted); }
+  .thresh-controls { display: flex; align-items: center; gap: 10px; }
+  .thresh-del { border: 0; background: transparent; color: var(--spent); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 6px; }
+  .thresh-del:hover { background: rgba(220,38,38,.1); }
+
   /* Build/version badge — proves which build is installed */
   #verBadge {
     position: fixed; right: 10px; top: 10px; z-index: 200;
@@ -597,6 +634,7 @@
             <div class="e" id="menuEmail">—</div>
           </div>
           <button class="menu-item" id="menuGoals">🎯 Monthly limits</button>
+          <button class="menu-item" id="menuNotif">🔔 Budget Alerts</button>
           <button class="menu-item danger" id="menuLogout">↪ Log out</button>
         </div>
       </div>
@@ -605,6 +643,7 @@
 </header>
 
 <main>
+  <div id="notifBannersContainer"></div>
   <div class="grid">
     <!-- LEFT RAIL -->
     <div class="stack">
@@ -670,6 +709,7 @@
           <div class="acct-email" id="acctEmail">—</div>
           <button class="acct-btn gcash" id="connectGcashBtn">🔗 Connect GCash <span class="acct-hint">auto-log transactions</span></button>
           <button class="acct-btn" id="baonBtn">💸 My baon <span class="acct-hint">safe-to-spend</span></button>
+          <button class="acct-btn" id="notifBtn">🔔 Budget Alerts <span class="acct-hint">threshold warnings</span></button>
           <button class="acct-btn" id="rewardsBtn">🏆 Rewards <span class="acct-hint" id="rewardsHint">Level 1</span></button>
           <button class="acct-btn" id="limitsBtn2">🎯 Monthly limits</button>
           <button class="acct-btn danger" id="logoutBtn2">↪ Log out</button>
@@ -772,6 +812,56 @@
   </div>
 </div>
 
+<!-- Notification Preferences Modal -->
+<div class="scrim" id="notifScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="notifTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="notifTitle">🔔 Budget Alerts</h3>
+        <p>Get notified when spending crosses your warning thresholds.</p>
+      </div>
+      <button class="x" id="notifClose" aria-label="Close">✕</button>
+    </div>
+    <div class="goal-list" style="max-height:60vh; overflow-y:auto; padding-right:4px;">
+      <div class="field" style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);">
+        <div>
+          <label style="font-weight:700; margin:0;">Enable Budget Alerts</label>
+          <div style="font-size:12px; color:var(--muted)">Master toggle for all notifications</div>
+        </div>
+        <input type="checkbox" id="notifMasterToggle" style="width:20px; height:20px; cursor:pointer;" />
+      </div>
+
+      <div style="margin-top:14px; font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);">Active Alert Thresholds</div>
+      <div id="thresholdList" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;"></div>
+
+      <div style="margin-top:20px; padding-top:14px; border-top:1px solid var(--line);">
+        <div style="font-weight:800; font-size:14px; margin-bottom:10px;">➕ Add Custom Threshold</div>
+        <div class="field">
+          <label for="newThreshCat">Category</label>
+          <select id="newThreshCat" class="f"></select>
+        </div>
+        <div class="field">
+          <label for="newThreshType">Alert Trigger Type</label>
+          <select id="newThreshType" class="f">
+            <option value="percentage">Percentage of Budget (%)</option>
+            <option value="amount_spent">Fixed Currency Spent (₱)</option>
+            <option value="amount_remaining">Remaining Budget Drops To (₱)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="newThreshValue">Target Value</label>
+          <input id="newThreshValue" class="num" type="number" min="1" step="1" placeholder="e.g. 80 for 80%, or 500 for ₱500" />
+        </div>
+        <button type="button" class="submit" id="addThreshBtn" style="background:var(--accent); color:#fff; width:100%;">Add Threshold Alert</button>
+      </div>
+    </div>
+    <div class="modal-foot" style="margin-top:12px;">
+      <button class="ghost" id="resetThreshBtn" style="flex:1; font-size:12px;">Reset Defaults</button>
+      <button class="submit" id="notifDone" style="flex:1">Done</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="confetti"></canvas>
 
 <div class="toast" id="toast"></div>
@@ -850,6 +940,17 @@
     if (!s.currency) s.currency = "PHP";
     if (!s.limits || !Object.keys(s.limits).length) s.limits = Object.assign({}, DEFAULT_LIMITS);
     if (!s.allowance) s.allowance = { amount: 0, period: "weekly", anchor: 0, reserve: 0 };
+    if (!s.notifications || typeof s.notifications !== "object") s.notifications = {};
+    if (typeof s.notifications.enabled !== "boolean") s.notifications.enabled = true;
+    if (!Array.isArray(s.notifications.thresholds) || !s.notifications.thresholds.length) {
+      s.notifications.thresholds = [
+        { id: "t-75-total", category: "Total", type: "percentage", value: 75, is_active: true },
+        { id: "t-100-total", category: "Total", type: "percentage", value: 100, is_active: true }
+      ];
+    }
+    if (!s.notifications.triggered_alerts || typeof s.notifications.triggered_alerts !== "object") {
+      s.notifications.triggered_alerts = {};
+    }
     if (!Array.isArray(s.txns)) s.txns = [];
     s.txns.forEach(function(t){
       if (!t.id) t.id = id();
@@ -871,6 +972,8 @@
     if (!currentUser) return;
     localStorage.setItem(dataKey(currentUser.email), JSON.stringify(state));
     setDirty(false);
+    // Real-time threshold check on save
+    checkNotifications();
     // Per-row cloud sync with offline outbox (no-op in device mode)
     if (window.Cloud && Cloud.pushState) Cloud.pushState(state);
     // Celebrate any newly-earned badges / level-ups
@@ -882,6 +985,182 @@
     var lab = document.getElementById("syncLabel");
     if (dot) dot.classList.toggle("dirty", v);
     if (lab) lab.textContent = v ? "Sync Now" : "Synced";
+  }
+
+  // ---------- Notification Engine ----------
+  var DEFAULT_THRESHOLDS = [
+    { id: "t-75-total", category: "Total", type: "percentage", value: 75, is_active: true },
+    { id: "t-100-total", category: "Total", type: "percentage", value: 100, is_active: true }
+  ];
+
+  function calculateNotificationTotals() {
+    var active = activeTxns();
+    var totalSpent = 0;
+    var perCatSpent = {};
+    active.forEach(function(t){
+      if (t.type === "expense"){
+        totalSpent += t.amount;
+        perCatSpent[t.cat] = (perCatSpent[t.cat] || 0) + t.amount;
+      }
+    });
+    var totalBudget = 0;
+    if (state && state.limits && Object.keys(state.limits).length) {
+      Object.keys(state.limits).forEach(function(k){
+        totalBudget += (state.limits[k] || 0);
+      });
+    }
+    return { totalSpent: totalSpent, totalBudget: totalBudget, perCatSpent: perCatSpent };
+  }
+
+  function evaluateThresholdRule(t, spent, budget) {
+    if (!t.is_active) return { met: false };
+    if (!(budget > 0) && t.type === "percentage") return { met: false };
+
+    if (t.type === "percentage") {
+      var pct = (spent / budget) * 100;
+      if (pct >= t.value) {
+        return {
+          met: true,
+          percentage: Math.round(pct),
+          spent: spent,
+          budget: budget,
+          message: pct >= 100
+            ? "Alert: You have reached/exceeded your budget of " + fmt(budget) + " for " + t.category + "."
+            : "You've used " + Math.round(pct) + "% (" + fmt(spent) + ") of your " + fmt(budget) + " budget for " + t.category + "."
+        };
+      }
+    } else if (t.type === "amount_spent") {
+      if (spent >= t.value) {
+        return {
+          met: true,
+          spent: spent,
+          budget: budget,
+          message: "Spending alert: Total spending for " + t.category + " reached " + fmt(spent) + " (Threshold: " + fmt(t.value) + ")."
+        };
+      }
+    } else if (t.type === "amount_remaining") {
+      var remaining = budget - spent;
+      if (remaining <= t.value) {
+        return {
+          met: true,
+          spent: spent,
+          budget: budget,
+          remaining: remaining,
+          message: "Remaining budget alert: Only " + fmt(Math.max(0, remaining)) + " remaining for " + t.category + " (Threshold: " + fmt(t.value) + ")."
+        };
+      }
+    }
+    return { met: false };
+  }
+
+  function checkNotifications() {
+    if (!state) return [];
+    state.notifications = normalizeNotifications(state.notifications);
+    var notif = state.notifications;
+    var firedAlerts = [];
+
+    if (!notif.enabled) return firedAlerts;
+
+    var totals = calculateNotificationTotals();
+    var totalSpent = totals.totalSpent;
+    var totalBudget = totals.totalBudget;
+    var perCatSpent = totals.perCatSpent;
+
+    notif.thresholds.forEach(function(t) {
+      var cat = t.category || "Total";
+      var spent = cat === "Total" ? totalSpent : (perCatSpent[cat] || 0);
+      var budget = cat === "Total" ? totalBudget : ((state.limits && state.limits[cat]) || 0);
+
+      var res = evaluateThresholdRule(t, spent, budget);
+
+      if (res.met) {
+        if (!notif.triggered_alerts[t.id]) {
+          notif.triggered_alerts[t.id] = Date.now();
+          firedAlerts.push({
+            thresholdId: t.id,
+            category: cat,
+            type: t.type,
+            value: t.value,
+            message: res.message
+          });
+
+          // System push notification via Capacitor LocalNotifications plugin
+          try {
+            if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) {
+              Capacitor.Plugins.LocalNotifications.schedule({
+                notifications: [{
+                  title: "UniBudget Alert ⚠️",
+                  body: res.message,
+                  id: Math.floor(Math.random() * 100000),
+                  schedule: { at: new Date(Date.now() + 100) }
+                }]
+              });
+            }
+          } catch (e) {}
+        }
+      } else {
+        // RESET HANDLING: If spending dropped back below threshold, clear triggered state
+        if (notif.triggered_alerts[t.id]) {
+          delete notif.triggered_alerts[t.id];
+        }
+      }
+    });
+
+    if (firedAlerts.length > 0) {
+      if (firedAlerts.length === 1) {
+        toast("⚠️ " + firedAlerts[0].message);
+      } else {
+        toast("⚠️ Budget Alert: " + firedAlerts.length + " spending thresholds crossed!");
+      }
+    }
+
+    return firedAlerts;
+  }
+
+  function renderNotificationBanners() {
+    var container = el("#notifBannersContainer");
+    if (!container) return;
+    if (!state || !state.notifications || !state.notifications.enabled) {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+
+    var totals = calculateNotificationTotals();
+    var totalSpent = totals.totalSpent;
+    var totalBudget = totals.totalBudget;
+    var perCatSpent = totals.perCatSpent;
+
+    var activeBanners = [];
+    state.notifications.thresholds.forEach(function(t){
+      if (!t.is_active) return;
+      var cat = t.category || "Total";
+      var spent = cat === "Total" ? totalSpent : (perCatSpent[cat] || 0);
+      var budget = cat === "Total" ? totalBudget : ((state.limits && state.limits[cat]) || 0);
+
+      var res = evaluateThresholdRule(t, spent, budget);
+      if (res.met) {
+        activeBanners.push({
+          id: t.id,
+          isDanger: (t.type === "percentage" && t.value >= 100) || (budget > 0 && spent >= budget),
+          message: res.message
+        });
+      }
+    });
+
+    if (!activeBanners.length) {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+
+    container.style.display = "block";
+    container.innerHTML = activeBanners.map(function(b){
+      return '<div class="notif-banner ' + (b.isDanger ? 'danger' : '') + '">' +
+        '<div class="msg"><span class="ic">' + (b.isDanger ? '🚨' : '⚠️') + '</span><span>' + esc(b.message) + '</span></div>' +
+        '<button type="button" class="dismiss-btn" onclick="this.parentElement.style.display=\'none\'" title="Dismiss">✕</button>' +
+      '</div>';
+    }).join("");
   }
 
   // ---------- Formatting ----------
@@ -970,6 +1249,9 @@
     // Petsa de Peligro forecaster + gamification chips
     renderForecast();
     renderGameChips();
+
+    // In-app notification warning banners
+    renderNotificationBanners();
   }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
 
@@ -1253,6 +1535,111 @@
   }
   function closeAchievements(){ el("#achScrim").classList.remove("show"); }
 
+  // ---------- Notification Preferences Modal Handlers ----------
+  function fillNewThreshCategories() {
+    var sel = el("#newThreshCat");
+    if (!sel) return;
+    sel.innerHTML = "";
+    var optTotal = document.createElement("option");
+    optTotal.value = "Total"; optTotal.textContent = "🌐 Total Overall Budget";
+    sel.appendChild(optTotal);
+    EXPENSE_CATS.forEach(function(c){
+      var o = document.createElement("option");
+      o.value = c.name; o.textContent = c.icon + " " + c.name;
+      sel.appendChild(o);
+    });
+  }
+
+  function renderThresholdList() {
+    var list = el("#thresholdList");
+    if (!list || !state || !state.notifications) return;
+    list.innerHTML = "";
+    var thresholds = state.notifications.thresholds || [];
+    if (!thresholds.length) {
+      list.innerHTML = '<div style="font-size:13px; color:var(--muted); padding:10px 0;">No active alerts configured.</div>';
+      return;
+    }
+
+    thresholds.forEach(function(t, idx) {
+      var row = document.createElement("div");
+      row.className = "thresh-row";
+
+      var typeLabel = t.type === "percentage" ? (t.value + "% of Budget")
+        : t.type === "amount_spent" ? ("Spent reaches " + fmt(t.value))
+        : ("Remaining budget drops to " + fmt(t.value));
+
+      row.innerHTML =
+        '<div class="thresh-info">' +
+          '<div class="thresh-title">' + esc(t.category) + '</div>' +
+          '<div class="thresh-sub">' + esc(typeLabel) + '</div>' +
+        '</div>' +
+        '<div class="thresh-controls">' +
+          '<input type="checkbox" data-idx="' + idx + '" class="thresh-toggle" ' + (t.is_active ? 'checked' : '') + ' style="width:18px; height:18px; cursor:pointer;" />' +
+          '<button type="button" data-idx="' + idx + '" class="thresh-del" title="Delete alert">🗑️</button>' +
+        '</div>';
+
+      row.querySelector(".thresh-toggle").addEventListener("change", function() {
+        var i = parseInt(this.getAttribute("data-idx"));
+        state.notifications.thresholds[i].is_active = this.checked;
+        save(); render();
+      });
+
+      row.querySelector(".thresh-del").addEventListener("click", function() {
+        var i = parseInt(this.getAttribute("data-idx"));
+        state.notifications.thresholds.splice(i, 1);
+        save(); render(); renderThresholdList();
+      });
+
+      list.appendChild(row);
+    });
+  }
+
+  function openNotificationSettings() {
+    state.notifications = normalizeNotifications(state.notifications);
+    var master = el("#notifMasterToggle");
+    if (master) master.checked = state.notifications.enabled;
+    fillNewThreshCategories();
+    renderThresholdList();
+    el("#notifScrim").classList.add("show");
+  }
+
+  function closeNotificationSettings() {
+    el("#notifScrim").classList.remove("show");
+  }
+
+  function addCustomThreshold() {
+    var cat = el("#newThreshCat").value;
+    var type = el("#newThreshType").value;
+    var val = parseFloat(el("#newThreshValue").value);
+
+    if (!val || val <= 0) {
+      toast("Enter a valid target threshold value");
+      el("#newThreshValue").focus();
+      return;
+    }
+
+    var newId = "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    state.notifications.thresholds.push({
+      id: newId,
+      category: cat,
+      type: type,
+      value: val,
+      is_active: true
+    });
+
+    save(); render(); renderThresholdList();
+    el("#newThreshValue").value = "";
+    toast("Added alert threshold for " + cat + " ✓");
+  }
+
+  function resetNotificationDefaults() {
+    if (!confirm("Reset all notification thresholds to defaults (75% and 100%)?")) return;
+    state.notifications.thresholds = JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS));
+    state.notifications.triggered_alerts = {};
+    save(); render(); renderThresholdList();
+    toast("Notification thresholds reset to default ✓");
+  }
+
   // ---- Confetti + celebration ----
   function confettiBurst(){
     var c = el("#confetti"); if(!c) return;
@@ -1360,7 +1747,21 @@
   el("#achClose").addEventListener("click", closeAchievements);
   el("#achDone").addEventListener("click", closeAchievements);
   el("#achScrim").addEventListener("click", function(e){ if (e.target === this) closeAchievements(); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); } });
+
+  // Notification preferences modal
+  el("#notifBtn").addEventListener("click", openNotificationSettings);
+  el("#menuNotif").addEventListener("click", function(){ el("#menuPop").classList.remove("show"); openNotificationSettings(); });
+  el("#notifClose").addEventListener("click", closeNotificationSettings);
+  el("#notifDone").addEventListener("click", closeNotificationSettings);
+  el("#notifScrim").addEventListener("click", function(e){ if (e.target === this) closeNotificationSettings(); });
+  el("#notifMasterToggle").addEventListener("change", function(){
+    state.notifications.enabled = this.checked;
+    save(); render();
+  });
+  el("#addThreshBtn").addEventListener("click", addCustomThreshold);
+  el("#resetThreshBtn").addEventListener("click", resetNotificationDefaults);
+
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); } });
   el("#clearAll").addEventListener("click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
   el("#syncBtn").addEventListener("click", syncFn);

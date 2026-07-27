@@ -4,7 +4,20 @@
 --  Safe to re-run (idempotent).
 -- ============================================================
 
--- Settings blob per user (currency + category limits).
+-- Settings blob per user (currency + category limits + notification settings).
+-- Expected data structure in jsonb:
+-- {
+--   "currency": "PHP",
+--   "limits": { "Food & Dining": 2000, ... },
+--   "notifications": {
+--     "enabled": true,
+--     "thresholds": [
+--       { "id": "t-75-total", "category": "Total", "type": "percentage", "value": 75, "is_active": true },
+--       { "id": "t-100-total", "category": "Total", "type": "percentage", "value": 100, "is_active": true }
+--     ],
+--     "triggered_alerts": { "t-75-total": 1720000000000 }
+--   }
+-- }
 create table if not exists public.budgets (
   user_id    uuid primary key references auth.users (id) on delete cascade,
   data       jsonb not null default '{}'::jsonb,
