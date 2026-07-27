@@ -9,31 +9,37 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
-# Cancel in-progress runs for the same branch/PR to save minutes
+# Cancel in-progress runs for the same branch/PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Default permissions — least privilege; individual jobs elevate as needed
+# Least-privilege default; jobs override as needed
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  # ───────────────────────────────────────────────────────────
-  # Job 1 – JS unit tests
-  # ───────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # Job 1 – JS Unit Tests
+  # ─────────────────────────────────────────────────────────────
   test:
     name: JS Unit Tests
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
+      actions: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # full history prevents detached-HEAD issues
+          fetch-depth: 0
+          # persist-credentials: false prevents the post-job git cleanup
+          # step from running git commands that cause exit code 128
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
@@ -47,9 +53,9 @@ jobs:
       - name: Run notification engine unit tests
         run: npm test
 
-  # ───────────────────────────────────────────────────────────
-  # Job 2 – Android debug APK build
-  # ───────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # Job 2 – Build Debug APK
+  # ─────────────────────────────────────────────────────────────
   build-debug:
     name: Build Debug APK
     runs-on: ubuntu-latest
@@ -57,13 +63,18 @@ jobs:
 
     permissions:
       contents: read
+      actions: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
+      # setup-java sets $JAVA_HOME to Temurin 21 — we pass this directly
+      # to Gradle via -Dorg.gradle.java.home below (no file patching needed)
       - name: Set up JDK 21 (Temurin LTS)
         uses: actions/setup-java@v4
         with:
@@ -79,7 +90,7 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Cache Gradle wrapper + caches
+      - name: Cache Gradle wrapper & caches
         uses: actions/cache@v4
         with:
           path: |
@@ -89,33 +100,41 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
+      # Must run before any ./gradlew invocation on Linux
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── CI environment patches ──────────────────────────────
-      # 1. Point sdk.dir at the pre-installed Android SDK on the runner
-      - name: Set Android SDK path in local.properties
+      # Write local.properties — this file is gitignored, safe to overwrite
+      # $ANDROID_SDK_ROOT is pre-set on all GitHub ubuntu-latest runners
+      - name: Set Android SDK path
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      # 2. Strip the Windows-only JDK pin (C:\Users\MRMD\jdk21\...)
-      #    Uses literal string match (-F) to avoid regex dot issues
-      - name: Remove local Windows JDK pin from gradle.properties
-        run: |
-          grep -v "org.gradle.java.home" android/gradle.properties > /tmp/gradle.properties.ci
-          mv /tmp/gradle.properties.ci android/gradle.properties
-          echo "--- gradle.properties after patch ---"
-          cat android/gradle.properties
-
-      # 3. Cap JVM heap to 3g (GitHub free runners have 7 GB total RAM)
-      - name: Patch JVM heap for CI (4g -> 3g)
-        run: |
-          sed -i 's/-Xmx4g/-Xmx3g/g' android/gradle.properties
-      # ── End CI patches ──────────────────────────────────────
-
+      # ── KEY FIX ──────────────────────────────────────────────
+      # We do NOT patch android/gradle.properties (a tracked git file).
+      # Patching tracked files causes the post-checkout cleanup to call
+      # git with stale state and exit 128.
+      #
+      # Instead we override everything via environment + CLI flags:
+      #   GRADLE_OPTS  → replaces org.gradle.jvmargs (-Xmx3g fits CI RAM)
+      #   -Dorg.gradle.java.home → overrides the Windows local JDK path
+      # ──────────────────────────────────────────────────────────
       - name: Build debug APK
-        run: cd android && ./gradlew assembleDebug --no-daemon --stacktrace --info
+        env:
+          # 3 GB fits GitHub's 7 GB free runner (leaves room for Android tools)
+          GRADLE_OPTS: >-
+            -Xmx3g
+            -XX:MaxMetaspaceSize=512m
+            -XX:+HeapDumpOnOutOfMemoryError
+            -Dfile.encoding=UTF-8
+        run: |
+          cd android
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --stacktrace \
+            --info \
+            -Dorg.gradle.java.home="$JAVA_HOME"
 
-      - name: Upload debug APK artifact
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: UniBudget-debug-${{ github.sha }}
@@ -123,9 +142,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # ───────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # Job 3 – GitHub Release (v* tags only)
-  # ───────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
@@ -133,13 +152,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
 
     permissions:
-      contents: write   # required to create a GitHub Release
+      contents: write   # required to publish a GitHub Release
+      actions: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 21 (Temurin LTS)
         uses: actions/setup-java@v4
@@ -169,19 +191,22 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Set Android SDK path in local.properties
+      - name: Set Android SDK path
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      - name: Remove local Windows JDK pin from gradle.properties
-        run: |
-          grep -v "org.gradle.java.home" android/gradle.properties > /tmp/gradle.properties.ci
-          mv /tmp/gradle.properties.ci android/gradle.properties
-
-      - name: Patch JVM heap for CI (4g -> 3g)
-        run: sed -i 's/-Xmx4g/-Xmx3g/g' android/gradle.properties
-
       - name: Build debug APK
-        run: cd android && ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: >-
+            -Xmx3g
+            -XX:MaxMetaspaceSize=512m
+            -XX:+HeapDumpOnOutOfMemoryError
+            -Dfile.encoding=UTF-8
+        run: |
+          cd android
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --stacktrace \
+            -Dorg.gradle.java.home="$JAVA_HOME"
 
       - name: Rename APK with version tag
         run: |
@@ -206,7 +231,7 @@ jobs:
 
             ### Sideload Installation
             1. Download `UniBudget-${{ github.ref_name }}-debug.apk`
-            2. Transfer to your Android phone (USB / Drive / email)
+            2. Transfer to your Android phone
             3. Tap the file → allow unknown sources → install
             4. Open UniBudget → sign up or log in
           files: UniBudget-${{ github.ref_name }}-debug.apk
