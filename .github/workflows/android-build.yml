@@ -103,6 +103,21 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      # ── KEY FIX ───────────────────────────────────────────────────────────
+      # android/.gitignore excludes two directories that Gradle requires:
+      #   1. android/capacitor-cordova-android-plugins/  (entire directory)
+      #      → android/app/capacitor.build.gradle applies cordova.variables.gradle
+      #        from this dir; if it doesn't exist, Gradle throws GradleScriptException
+      #   2. android/app/src/main/assets/public/         (bundled web assets)
+      #      → the app is a Capacitor PWA; without web assets it will build but crash
+      #
+      # `npx cap sync android` regenerates BOTH from node_modules + www/.
+      # It must run AFTER npm ci (so @capacitor/* packages exist in node_modules)
+      # and BEFORE any ./gradlew invocation.
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Sync Capacitor (regenerate native files & web assets)
+        run: npx cap sync android
+
       - name: Cache Gradle wrapper & caches
         uses: actions/cache@v4   # Node 20 runtime ✔
         with:
