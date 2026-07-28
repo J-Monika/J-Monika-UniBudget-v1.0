@@ -645,12 +645,19 @@
     #tabbar button {
       flex: 1; border: 0; background: transparent; cursor: pointer; font-family: inherit;
       display: flex; flex-direction: column; align-items: center; gap: 3px;
-      font-size: 11px; font-weight: 700; color: var(--muted); padding: 6px 4px; border-radius: 12px;
+      font-size: 11px; font-weight: 700; color: var(--muted); padding: 6px 2px; border-radius: 12px;
+      min-width: 0;
     }
-    #tabbar button span { font-size: 21px; line-height: 1; }
+    #tabbar button span { font-size: 20px; line-height: 1; }
     #tabbar button:active { background: var(--page); }
+    #tabbar button.active { color: var(--accent); }
     #tabbar button.danger { color: var(--spent); }
     body.authed main { padding-bottom: 96px; }   /* clear the bar */
+    /* Tighten labels on very small screens (< 360px) */
+    @media (max-width: 360px) {
+      #tabbar button { font-size: 9.5px; }
+      #tabbar button span { font-size: 18px; }
+    }
   }
 </style>
 </head>
@@ -796,7 +803,7 @@
         </form>
       </section>
 
-      <section class="card acct">
+      <section class="card acct" id="acctSection">
         <div class="sec-head"><h2>👤 Account</h2></div>
         <div class="acct-body">
           <div class="acct-email" id="acctEmail">—</div>
@@ -1149,6 +1156,7 @@
   <button type="button" data-act="home"><span>🏠</span>Home</button>
   <button type="button" data-act="gcash"><span>🔗</span>Wallets</button>
   <button type="button" data-act="rewards"><span>🏆</span>Rewards</button>
+  <button type="button" data-act="profile"><span>👤</span>Profile</button>
   <button type="button" data-act="logout" class="danger"><span>↪</span>Log out</button>
 </nav>
 
@@ -2293,10 +2301,19 @@
   el("#tabbar").addEventListener("click", function(e){
     var b = e.target.closest("button"); if (!b) return;
     var act = b.getAttribute("data-act");
+    // Update active state (skip logout — it's an action, not a destination)
+    if (act !== "logout") {
+      document.querySelectorAll("#tabbar button").forEach(function(btn){ btn.classList.remove("active"); });
+      b.classList.add("active");
+    }
     if (act === "home") window.scrollTo({ top: 0, behavior: "smooth" });
     else if (act === "rewards") openAchievements();
     else if (act === "logout") logout();
     else if (act === "gcash") openGcashSetup();
+    else if (act === "profile") {
+      var acct = document.getElementById("acctSection");
+      if (acct) acct.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   });
 
   // Show the runtime platform on the build badge (diagnostic)
