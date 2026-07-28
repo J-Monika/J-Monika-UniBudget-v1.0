@@ -1168,6 +1168,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="app-config.js"></script>
 <script src="cloud.js"></script>
+<script src="gamification.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1237,6 +1238,9 @@
     }
     if (!s.notifications.triggered_alerts || typeof s.notifications.triggered_alerts !== "object") {
       s.notifications.triggered_alerts = {};
+    }
+    if (window.GamificationEngine) {
+      s.gamification = GamificationEngine.normalizeGamificationState(s.gamification);
     }
     if (!Array.isArray(s.txns)) s.txns = [];
     s.txns.forEach(function(t){
@@ -1566,6 +1570,7 @@
     if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
     if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
     state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false });
+    if (window.GamificationEngine) GamificationEngine.awardXp(state, "ADD_TRANSACTION");
     save(); render();
     el("#addForm").reset();
     el("#suggest").classList.remove("show");
@@ -1645,6 +1650,7 @@
       var v = parseFloat(inp.value);
       state.limits[inp.getAttribute("data-cat")] = (v > 0) ? v : 0;
     });
+    if (window.GamificationEngine) GamificationEngine.awardXp(state, "CREATE_BUDGET");
     save(); render(); closeGoals();
     toast("Monthly limits updated ✓");
   }
@@ -1682,9 +1688,10 @@
     var danger = runOut && runOut < w.end && available > 0;
     return { w:w, spent:spent, available:available, daysLeft:daysLeft, safePerDay:safePerDay, burn:burn, runOut:runOut, danger:danger, amount:al.amount, reserve:reserve };
   }
-  // Consecutive days up to today with zero discretionary (Food/Fun) spend.
+  // Consecutive days up to today with zero discretionary (Fun & Social, Other) spend.
   function tipidStreak(){
-    var DISC = { "Food & Dining":1, "Fun & Social":1 };
+    if (window.GamificationEngine) return GamificationEngine.calculateTipidStreak(state.txns);
+    var DISC = { "Fun & Social":1, "Other":1 };
     var byDay = {};
     activeTxns().forEach(function(t){
       if (t.type === "expense" && DISC[t.cat]) byDay[dayKey(t.ts)] = true;
@@ -1707,6 +1714,7 @@
     var cls = perDay <= 0 ? "broke" : (perDay < (f.amount / (f.w.len)) * 0.6 ? "low" : "ok");
     var pctLeft = Math.max(0, Math.min(100, (f.available / f.amount) * 100));
     var streak = tipidStreak();
+    if (state && state.gamification) state.gamification.tipidStreak = streak;
     var html = ''+
       '<div class="fc-hero"><span class="amt '+cls+' num">'+fmt(Math.max(0, perDay))+'</span><span class="per">safe / day</span></div>'+
       '<div class="fc-sub"><b>'+fmt(Math.max(0, f.available))+'</b> left · <b>'+f.daysLeft+'</b> day'+(f.daysLeft===1?"":"s")+' until '+fmtDate(f.w.end)+'</div>'+
@@ -1719,7 +1727,7 @@
       html += '<div class="fc-danger">⚠️ At this pace your baon runs out around <b>'+fmtDate(f.runOut)+'</b> — about <b>'+early+' day'+(early===1?"":"s")+' early</b>. Keep it under <b>'+fmt(fix)+'/day</b> to make it.</div>';
     }
     if (streak >= 1){
-      html += '<div class="fc-streak">🔥 '+streak+'-day tipid streak'+(streak>=3?" — go ka!":"")+'</div>';
+      html += '<div class="fc-streak">🔥 '+streak+'-day tipid streak (₱0 Fun &amp; Other)'+(streak>=3?" — go ka!":"")+'</div>';
     }
     body.innerHTML = html;
   }
@@ -1742,6 +1750,7 @@
     // Re-anchor the period start when amount/period changes or first setup.
     var anchor = (prev.anchor && prev.period === period && prev.amount) ? prev.anchor : startOfToday();
     state.allowance = { amount: amount, period: period, reserve: reserve, anchor: anchor };
+    if (window.GamificationEngine) GamificationEngine.awardXp(state, "CREATE_BUDGET");
     save(); render(); closeAllowance();
     toast(amount > 0 ? "Baon saved ✓" : "Allowance cleared");
   }
@@ -1761,19 +1770,18 @@
   function injectMascots(root){ (root||document).querySelectorAll(".mascot").forEach(function(m){ if(!m.dataset.filled){ m.innerHTML = MASCOT_SVG; m.dataset.filled = "1"; } }); }
 
   // ---- Gamification ----
-  var XP_PER_LEVEL = 120;
   var LEVEL_TITLES = ["Baon Newbie","Ipon Trainee","Tipid Rookie","Budget Cadet","Baon Boss","Diskarte Master","Ipon Sensei","Wallet Wizard","Baon Legend"];
-  function levelTitle(lv){ return LEVEL_TITLES[Math.min(lv-1, LEVEL_TITLES.length-1)]; }
+  function levelTitle(lv){ return LEVEL_TITLES[Math.min(Math.max(1, lv)-1, LEVEL_TITLES.length-1)]; }
   var BADGES = [
-    { id:"first", icon:"🌱", name:"First Peso", desc:"Log your first record", test:function(st){ return st.txCount>=1; } },
-    { id:"baon", icon:"💸", name:"Baon Boss", desc:"Set your allowance", test:function(st){ return st.hasBaon; } },
-    { id:"auto", icon:"⚡", name:"Auto-Pilot", desc:"Auto-log a wallet alert", test:function(st){ return st.autoCount>=1; } },
-    { id:"streak3", icon:"🔥", name:"On Fire", desc:"3-day tipid streak", test:function(st){ return st.streak>=3; } },
-    { id:"streak7", icon:"🗓️", name:"Week Warrior", desc:"7-day tipid streak", test:function(st){ return st.streak>=7; } },
-    { id:"log10", icon:"📊", name:"Diskarte", desc:"Log 10 records", test:function(st){ return st.txCount>=10; } },
-    { id:"log50", icon:"👑", name:"Ipon Royalty", desc:"Log 50 records", test:function(st){ return st.txCount>=50; } },
-    { id:"safe", icon:"🛡️", name:"Budget Guard", desc:"Stay in the green with baon set", test:function(st){ return st.hasBaon && st.safe; } },
-    { id:"lvl5", icon:"🏆", name:"High Roller", desc:"Reach Level 5", test:function(st){ return st.level>=5; } }
+    { id:"first", icon:"🌱", name:"First Peso", desc:"Log your first record", test:function(st, g){ return st.txCount>=1; } },
+    { id:"baon", icon:"💸", name:"Baon Boss", desc:"Set your allowance", test:function(st, g){ return st.hasBaon; } },
+    { id:"auto", icon:"⚡", name:"Auto-Pilot", desc:"Auto-log a wallet alert", test:function(st, g){ return st.autoCount>=1; } },
+    { id:"streak3", icon:"🔥", name:"On Fire", desc:"3-day tipid streak (₱0 on Fun & Other)", test:function(st, g){ return (g.tipidStreak || st.streak)>=3; } },
+    { id:"streak7", icon:"🗓️", name:"Week Warrior", desc:"7-day tipid streak (₱0 on Fun & Other)", test:function(st, g){ return (g.tipidStreak || st.streak)>=7; } },
+    { id:"log10", icon:"📊", name:"Diskarte", desc:"Log 10 records", test:function(st, g){ return st.txCount>=10; } },
+    { id:"log50", icon:"👑", name:"Ipon Royalty", desc:"Log 50 records", test:function(st, g){ return st.txCount>=50; } },
+    { id:"safe", icon:"🛡️", name:"Budget Guard", desc:"Stay in the green with baon set", test:function(st, g){ return st.hasBaon && st.safe; } },
+    { id:"lvl5", icon:"🏆", name:"High Roller", desc:"Reach Level 5", test:function(st, g){ return (g.level || st.level)>=5; } }
   ];
   function computeStats(s){
     var active = (s.txns||[]).filter(function(t){ return !t.deleted; });
@@ -1783,15 +1791,30 @@
     var hasBaon = !!(s.allowance && s.allowance.amount>0);
     var f = computeForecast();
     var safe = !!(f && f.available>0 && !f.danger);
-    var xp = txCount*5 + autoCount*4 + streak*15 + (hasBaon?25:0);
-    var level = Math.floor(xp/XP_PER_LEVEL)+1;
-    return { txCount:txCount, autoCount:autoCount, streak:streak, hasBaon:hasBaon, safe:safe,
-             xp:xp, level:level, xpInLevel: xp % XP_PER_LEVEL, xpForLevel: XP_PER_LEVEL };
+
+    var gState = s.gamification || (window.GamificationEngine ? GamificationEngine.INITIAL_STATE : { xp: 0, level: 1 });
+    var xp = gState.xp || 0;
+    var level = gState.level || (window.GamificationEngine ? GamificationEngine.calculateLevel(xp) : 1);
+    var prog = window.GamificationEngine ? GamificationEngine.xpProgressInLevel(xp) : { xpInLevel: xp % 120, xpNeededForNext: 120, pct: Math.round(((xp % 120)/120)*100) };
+
+    return { 
+      txCount: txCount, 
+      autoCount: autoCount, 
+      streak: streak, 
+      tipidStreak: streak,
+      hasBaon: hasBaon, 
+      safe: safe,
+      xp: xp, 
+      level: level, 
+      xpInLevel: prog.xpInLevel, 
+      xpForLevel: prog.xpNeededForNext,
+      pct: prog.pct
+    };
   }
   function renderGameChips(){
     var body = el("#fcBody"); if(!body) return;
     var st = computeStats(state);
-    var pct = Math.round((st.xpInLevel/st.xpForLevel)*100);
+    var pct = st.pct;
     var wrap = document.createElement("div");
     wrap.innerHTML =
       '<div class="hero-chips">'+
@@ -1807,13 +1830,14 @@
   // ---- Achievements modal ----
   function openAchievements(){
     var st = computeStats(state);
+    var g = state.gamification || {};
     el("#lvlRing").textContent = st.level;
     el("#lvlTitle").textContent = levelTitle(st.level);
     el("#lvlSub").textContent = st.xp+" XP · "+st.xpInLevel+"/"+st.xpForLevel+" to Lv "+(st.level+1);
-    el("#lvlBar").style.width = Math.round(st.xpInLevel/st.xpForLevel*100)+"%";
+    el("#lvlBar").style.width = st.pct+"%";
     var grid = el("#badgeGrid"); grid.innerHTML = "";
     BADGES.forEach(function(b){
-      var earned = b.test(st);
+      var earned = b.test(st, g);
       var d = document.createElement("div"); d.className = "badge"+(earned?" earned":"");
       d.innerHTML = '<div class="ic">'+b.icon+'</div><div class="bn">'+esc(b.name)+'</div><div class="bd">'+esc(b.desc)+'</div>';
       grid.appendChild(d);
@@ -2150,6 +2174,7 @@
     parsed.id = stableId; parsed.ts = now(); parsed.updated_at = now();
     parsed.deleted = false; parsed.source = "gcash-auto";
     state.txns.push(parsed);
+    if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
     save(); render();
     var walletName = (parsed.desc || "").split(" · ")[0] || "wallet";
     toast((parsed.type==="income"?"↓ Auto-added ":"↑ Auto-added ")+fmt(parsed.amount)+" · "+walletName);
@@ -2249,6 +2274,11 @@
   function enterApp(user){
     currentUser = user;
     state = loadState();
+    if (window.GamificationEngine) {
+      GamificationEngine.runReset();
+      var awardedDaily = GamificationEngine.dailyLoginCheck(state);
+      if (awardedDaily) save();
+    }
     document.body.classList.add("authed");
     // header user chip
     var initial = (user.name || user.email).trim().charAt(0).toUpperCase();

@@ -110,6 +110,9 @@
       mark("gc-s2", s.sms);
       mark("gc-s3", s.postNotifications);
       mark("gc-s4", s.battery);
+      if (window.GamificationEngine && window.state && (s.notificationAccess || s.sms)) {
+        GamificationEngine.awardXp(window.state, "CONNECT_WALLETS");
+      }
     } catch (e) {}
   }
   function mark(id, ok) {
