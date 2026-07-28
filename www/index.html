@@ -299,6 +299,97 @@
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
+  /* ===== PIN LOCK SCREEN ===== */
+  #pinLock {
+    position: fixed; inset: 0; z-index: 500;
+    background: linear-gradient(155deg, #1a1640 0%, #0d0f17 60%, #1a1640 100%);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; padding: 32px 24px;
+  }
+  #pinLock.show { display: flex; }
+  .pin-brand { color: #fff; font-size: 22px; font-weight: 800; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .pin-brand .logo { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; font-size: 22px; background: linear-gradient(160deg,#524af0,#4338ca); box-shadow: 0 8px 20px rgba(79,70,229,.4); }
+  .pin-sub { color: rgba(255,255,255,.55); font-size: 14px; font-weight: 600; margin-bottom: 40px; text-align: center; }
+  .pin-dots { display: flex; gap: 16px; margin-bottom: 36px; }
+  .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); transition: all .15s; }
+  .pin-dot.filled { background: #fff; border-color: #fff; transform: scale(1.1); }
+  .pin-dot.error { border-color: #f87171; background: #f87171; animation: pinShake .4s ease; }
+  @keyframes pinShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+  .pin-err { color: #fca5a5; font-size: 13px; font-weight: 700; min-height: 20px; margin-bottom: 12px; text-align: center; }
+  .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 280px; width: 100%; }
+  .pin-key {
+    aspect-ratio: 1; border: 0; border-radius: 50%; font-size: 22px; font-weight: 700; cursor: pointer;
+    background: rgba(255,255,255,.1); color: #fff; font-family: inherit;
+    display: grid; place-items: center; transition: background .12s, transform .1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pin-key:hover { background: rgba(255,255,255,.18); }
+  .pin-key:active { transform: scale(.93); background: rgba(255,255,255,.24); }
+  .pin-key.del { font-size: 20px; }
+  .pin-key.empty { pointer-events: none; background: transparent; }
+  .pin-forget { color: rgba(255,255,255,.45); font-size: 12.5px; font-weight: 600; cursor: pointer; margin-top: 28px; text-align: center; }
+  .pin-forget:hover { color: rgba(255,255,255,.75); }
+
+  /* ===== 50/30/20 BUDGET FRAMEWORK ===== */
+  .framework-band {
+    display: flex; height: 14px; border-radius: 999px; overflow: hidden;
+    margin: 12px 0 6px; border: 1px solid var(--line);
+  }
+  .framework-band span { display: block; height: 100%; transition: width .35s ease; }
+  .fw-needs  { background: #4f46e5; }
+  .fw-wants  { background: #ec4899; }
+  .fw-savings{ background: #16a34a; }
+  .fw-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .fw-row:last-child { border-bottom: 0; }
+  .fw-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .fw-label { flex: 1; font-weight: 700; font-size: 14px; }
+  .fw-pct-input {
+    width: 70px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 9px; padding: 7px 10px; font-size: 14px; font-weight: 700;
+    font-family: inherit; text-align: center; transition: border-color .15s;
+  }
+  .fw-pct-input:focus { outline: none; border-color: var(--accent); }
+  .fw-amt { font-size: 13px; color: var(--muted); font-weight: 600; min-width: 70px; text-align: right; white-space: nowrap; }
+  .fw-sum-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0 0; font-size: 13px; font-weight: 700;
+  }
+  .fw-sum-val { font-size: 16px; font-weight: 800; }
+  .fw-sum-val.ok  { color: var(--income); }
+  .fw-sum-val.bad { color: var(--spent); }
+  .fw-income-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .fw-income-row label { font-size: 13px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+  .fw-donut-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; margin: 0 auto 10px; }
+  .fw-donut-wrap svg { width: 100%; height: 100%; }
+  .fw-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .fw-donut-center .pct-num { font-size: 18px; font-weight: 800; }
+  .fw-donut-center .pct-lbl { font-size: 10px; font-weight: 700; color: var(--muted); }
+  .fw-actual-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 6px; }
+  .fw-actual-row b { color: var(--ink); }
+
+  /* ===== SECURITY MODAL ===== */
+  .sec-field-group { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 8px; }
+  .sec-divider { height: 1px; background: var(--line); margin: 8px 0; }
+  .sec-section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 4px 0 2px; }
+  .tab-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--page); padding: 5px; border-radius: 13px; margin-bottom: 16px; }
+  .tab-toggle button { border: 0; background: transparent; cursor: pointer; padding: 10px; border-radius: 9px; font-weight: 700; font-size: 14px; color: var(--muted); font-family: inherit; transition: all .15s; }
+  .tab-toggle button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  .pin-setup-dots { display: flex; gap: 12px; justify-content: center; margin: 12px 0; }
+  .pin-setup-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); background: var(--page); transition: all .15s; }
+  .pin-setup-dot.filled { background: var(--accent); border-color: var(--accent); }
+  .pin-setup-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 260px; margin: 0 auto; }
+  .pin-setup-key {
+    aspect-ratio: 1; border: 1.5px solid var(--line); border-radius: 50%; font-size: 18px;
+    font-weight: 700; cursor: pointer; background: var(--card); color: var(--ink);
+    font-family: inherit; display: grid; place-items: center; transition: all .12s;
+  }
+  .pin-setup-key:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .pin-setup-key:active { transform: scale(.93); }
+  .pin-setup-key.empty { pointer-events: none; background: transparent; border-color: transparent; }
+
   /* ---------- Auth screen ---------- */
   #app { display: none; }
   body.authed #app { display: block; }
@@ -635,6 +726,8 @@
           </div>
           <button class="menu-item" id="menuGoals">🎯 Monthly limits</button>
           <button class="menu-item" id="menuNotif">🔔 Budget Alerts</button>
+          <button class="menu-item" id="menuFramework">📊 50/30/20 Framework</button>
+          <button class="menu-item" id="menuSecurity">🔒 Security &amp; Privacy</button>
           <button class="menu-item danger" id="menuLogout">↪ Log out</button>
         </div>
       </div>
@@ -710,6 +803,8 @@
           <button class="acct-btn gcash" id="connectGcashBtn">🔗 Connect GCash <span class="acct-hint">auto-log transactions</span></button>
           <button class="acct-btn" id="baonBtn">💸 My baon <span class="acct-hint">safe-to-spend</span></button>
           <button class="acct-btn" id="notifBtn">🔔 Budget Alerts <span class="acct-hint">threshold warnings</span></button>
+          <button class="acct-btn" id="frameworkBtn">📊 50/30/20 Framework <span class="acct-hint">budget allocation</span></button>
+          <button class="acct-btn" id="securityBtn">🔒 Security &amp; Privacy <span class="acct-hint">PIN &amp; password</span></button>
           <button class="acct-btn" id="rewardsBtn">🏆 Rewards <span class="acct-hint" id="rewardsHint">Level 1</span></button>
           <button class="acct-btn" id="limitsBtn2">🎯 Monthly limits</button>
           <button class="acct-btn danger" id="logoutBtn2">↪ Log out</button>
@@ -863,6 +958,190 @@
 </div>
 
 <canvas id="confetti"></canvas>
+
+<!-- ===== PIN LOCK SCREEN ===== -->
+<div id="pinLock" role="dialog" aria-modal="true" aria-label="Enter PIN to unlock">
+  <div class="pin-brand"><span class="logo">🎓</span>UniBudget</div>
+  <div class="pin-sub" id="pinLockSub">Enter your 4-digit PIN to continue</div>
+  <div class="pin-dots" id="pinDots">
+    <span class="pin-dot" id="pd0"></span>
+    <span class="pin-dot" id="pd1"></span>
+    <span class="pin-dot" id="pd2"></span>
+    <span class="pin-dot" id="pd3"></span>
+  </div>
+  <div class="pin-err" id="pinErr"></div>
+  <div class="pin-pad" id="pinPad">
+    <button class="pin-key" data-k="1">1</button>
+    <button class="pin-key" data-k="2">2</button>
+    <button class="pin-key" data-k="3">3</button>
+    <button class="pin-key" data-k="4">4</button>
+    <button class="pin-key" data-k="5">5</button>
+    <button class="pin-key" data-k="6">6</button>
+    <button class="pin-key" data-k="7">7</button>
+    <button class="pin-key" data-k="8">8</button>
+    <button class="pin-key" data-k="9">9</button>
+    <button class="pin-key empty" aria-hidden="true"></button>
+    <button class="pin-key" data-k="0">0</button>
+    <button class="pin-key del" id="pinDel" aria-label="Delete">⌫</button>
+  </div>
+  <div class="pin-forget" id="pinForget">Forgot PIN? Use email &amp; password instead</div>
+</div>
+
+<!-- ===== 50/30/20 BUDGET FRAMEWORK MODAL ===== -->
+<div class="scrim" id="fwScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="fwTitle" style="max-width:520px">
+    <div class="modal-head">
+      <div>
+        <h3 id="fwTitle">📊 50/30/20 Budget Framework</h3>
+        <p>Set your income and customize category allocations. Must total 100%.</p>
+      </div>
+      <button class="x" id="fwClose" aria-label="Close">✕</button>
+    </div>
+    <div style="padding:4px 26px 20px;">
+      <!-- Income input -->
+      <div class="fw-income-row">
+        <label for="fwIncome">Net Monthly Income</label>
+        <div class="amt-wrap" style="flex:1;max-width:200px">
+          <span class="sym" id="fwIncSym">₱</span>
+          <input id="fwIncome" class="num" type="number" min="0" step="100" placeholder="e.g. 5000" style="padding-left:30px" />
+        </div>
+      </div>
+
+      <!-- Donut chart area -->
+      <div style="display:flex;gap:20px;align-items:center;margin:14px 0 10px;">
+        <div class="fw-donut-wrap">
+          <svg viewBox="0 0 36 36" id="fwDonutSvg">
+            <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--track)" stroke-width="3.5"/>
+            <circle id="fwDonutNeeds"  cx="18" cy="18" r="15.915" fill="none" stroke="#4f46e5" stroke-width="3.5" stroke-dasharray="50 50" stroke-dashoffset="25" style="transition:stroke-dasharray .35s"/>
+            <circle id="fwDonutWants"  cx="18" cy="18" r="15.915" fill="none" stroke="#ec4899" stroke-width="3.5" stroke-dasharray="30 70" stroke-dashoffset="-25" style="transition:stroke-dasharray .35s"/>
+            <circle id="fwDonutSave"   cx="18" cy="18" r="15.915" fill="none" stroke="#16a34a" stroke-width="3.5" stroke-dasharray="20 80" stroke-dashoffset="-55" style="transition:stroke-dasharray .35s"/>
+          </svg>
+          <div class="fw-donut-center">
+            <span class="pct-num" id="fwDonutPct" style="color:var(--ink)">100%</span>
+            <span class="pct-lbl">total</span>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Actual vs Target</div>
+          <div class="fw-actual-row"><span style="color:#4f46e5">■</span> Needs: <b id="fwActNeeds">—</b></div>
+          <div class="fw-actual-row"><span style="color:#ec4899">■</span> Wants: <b id="fwActWants">—</b></div>
+          <div class="fw-actual-row"><span style="color:#16a34a">■</span> Savings: <b id="fwActSave">—</b></div>
+        </div>
+      </div>
+
+      <!-- Allocation bar -->
+      <div class="framework-band" id="fwBand">
+        <span class="fw-needs"  id="fwBandNeeds"  style="width:50%"></span>
+        <span class="fw-wants"  id="fwBandWants"  style="width:30%"></span>
+        <span class="fw-savings" id="fwBandSave"  style="width:20%"></span>
+      </div>
+
+      <!-- Rows -->
+      <div class="fw-row">
+        <span class="fw-swatch" style="background:#4f46e5"></span>
+        <span class="fw-label">🏠 Needs</span>
+        <input id="fwNeedsPct" class="fw-pct-input" type="number" min="0" max="100" step="1" value="50" />
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">%</span>
+        <span class="fw-amt" id="fwNeedsAmt">—</span>
+      </div>
+      <div class="fw-row">
+        <span class="fw-swatch" style="background:#ec4899"></span>
+        <span class="fw-label">🎉 Wants</span>
+        <input id="fwWantsPct" class="fw-pct-input" type="number" min="0" max="100" step="1" value="30" />
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">%</span>
+        <span class="fw-amt" id="fwWantsAmt">—</span>
+      </div>
+      <div class="fw-row">
+        <span class="fw-swatch" style="background:#16a34a"></span>
+        <span class="fw-label">💰 Savings/Debt</span>
+        <input id="fwSavePct" class="fw-pct-input" type="number" min="0" max="100" step="1" value="20" />
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">%</span>
+        <span class="fw-amt" id="fwSaveAmt">—</span>
+      </div>
+      <div class="fw-sum-row">
+        <span>Total</span>
+        <span class="fw-sum-val" id="fwSumVal">100%</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost" id="fwReset" style="flex:1">Reset to 50/30/20</button>
+      <button class="submit" id="fwSave" style="flex:1">Save Framework</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECURITY & PRIVACY MODAL ===== -->
+<div class="scrim" id="secScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="secTitle" style="max-width:460px">
+    <div class="modal-head">
+      <div><h3 id="secTitle">🔒 Security &amp; Privacy</h3><p>Manage your PIN lock and account password.</p></div>
+      <button class="x" id="secClose" aria-label="Close">✕</button>
+    </div>
+    <div style="padding:4px 26px 8px;">
+      <div class="tab-toggle">
+        <button id="secTabPin" class="on">4-Digit PIN</button>
+        <button id="secTabPw">Password</button>
+      </div>
+
+      <!-- PIN panel -->
+      <div id="secPinPanel">
+        <div id="secPinStatus" style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:12px;">Loading…</div>
+        <div class="sec-section-title">Set / Change PIN</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Enter a new 4-digit PIN. If a PIN is already set, you'll need the current one first.</div>
+        <div id="secPinCurrentWrap" style="display:none;margin-bottom:10px;">
+          <div class="sec-section-title">Current PIN</div>
+          <div class="pin-setup-dots" id="secCurrentDots">
+            <span class="pin-setup-dot" id="scp0"></span><span class="pin-setup-dot" id="scp1"></span>
+            <span class="pin-setup-dot" id="scp2"></span><span class="pin-setup-dot" id="scp3"></span>
+          </div>
+          <div class="pin-setup-pad" id="secCurrentPad">
+            <button class="pin-setup-key" data-pp="cur" data-k="1">1</button><button class="pin-setup-key" data-pp="cur" data-k="2">2</button><button class="pin-setup-key" data-pp="cur" data-k="3">3</button>
+            <button class="pin-setup-key" data-pp="cur" data-k="4">4</button><button class="pin-setup-key" data-pp="cur" data-k="5">5</button><button class="pin-setup-key" data-pp="cur" data-k="6">6</button>
+            <button class="pin-setup-key" data-pp="cur" data-k="7">7</button><button class="pin-setup-key" data-pp="cur" data-k="8">8</button><button class="pin-setup-key" data-pp="cur" data-k="9">9</button>
+            <button class="pin-setup-key empty" data-pp="cur"></button><button class="pin-setup-key" data-pp="cur" data-k="0">0</button><button class="pin-setup-key del" data-pp="cur">⌫</button>
+          </div>
+        </div>
+        <div class="sec-section-title" style="margin-top:10px">New PIN</div>
+        <div class="pin-setup-dots" id="secNewPinDots">
+          <span class="pin-setup-dot" id="snp0"></span><span class="pin-setup-dot" id="snp1"></span>
+          <span class="pin-setup-dot" id="snp2"></span><span class="pin-setup-dot" id="snp3"></span>
+        </div>
+        <div class="pin-setup-pad" id="secNewPinPad">
+          <button class="pin-setup-key" data-pp="new" data-k="1">1</button><button class="pin-setup-key" data-pp="new" data-k="2">2</button><button class="pin-setup-key" data-pp="new" data-k="3">3</button>
+          <button class="pin-setup-key" data-pp="new" data-k="4">4</button><button class="pin-setup-key" data-pp="new" data-k="5">5</button><button class="pin-setup-key" data-pp="new" data-k="6">6</button>
+          <button class="pin-setup-key" data-pp="new" data-k="7">7</button><button class="pin-setup-key" data-pp="new" data-k="8">8</button><button class="pin-setup-key" data-pp="new" data-k="9">9</button>
+          <button class="pin-setup-key empty" data-pp="new"></button><button class="pin-setup-key" data-pp="new" data-k="0">0</button><button class="pin-setup-key del" data-pp="new">⌫</button>
+        </div>
+        <div id="secPinErr" style="color:var(--spent);font-size:12.5px;font-weight:700;min-height:18px;margin-top:6px;text-align:center;"></div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="ghost" id="secPinRemove" style="flex:1;font-size:13px;color:var(--spent);border-color:var(--spent)">Remove PIN</button>
+          <button class="submit" id="secPinSave" style="flex:1">Save PIN</button>
+        </div>
+      </div>
+
+      <!-- Password panel -->
+      <div id="secPwPanel" style="display:none;">
+        <div class="sec-field-group">
+          <div class="field">
+            <label for="secCurPw">Current Password</label>
+            <div class="pw-wrap"><input id="secCurPw" type="password" placeholder="Current password" /><button type="button" class="toggle" data-tgt="secCurPw">Show</button></div>
+          </div>
+          <div class="field">
+            <label for="secNewPw">New Password</label>
+            <div class="pw-wrap"><input id="secNewPw" type="password" placeholder="At least 6 characters" /><button type="button" class="toggle" data-tgt="secNewPw">Show</button></div>
+          </div>
+          <div class="field">
+            <label for="secConfPw">Confirm New Password</label>
+            <div class="pw-wrap"><input id="secConfPw" type="password" placeholder="Repeat new password" /><button type="button" class="toggle" data-tgt="secConfPw">Show</button></div>
+          </div>
+        </div>
+        <div id="secPwErr" style="color:var(--spent);font-size:12.5px;font-weight:700;min-height:18px;margin:4px 0;text-align:center;"></div>
+        <button class="submit" id="secPwSave" style="width:100%;margin-top:4px">Update Password</button>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -2041,6 +2320,461 @@
     if (s && s.email) { enterApp(s); }
     else { el("#auEmail").focus(); }
   })();
+})();
+
+// ============================================================
+//  UniBudget — 50/30/20 Framework + PIN Security module
+// ============================================================
+(function () {
+  "use strict";
+
+  // ---- Storage keys ----
+  var SEC_KEY  = "unibudget:security";  // { pinHash, pinSalt }
+  var FW_KEY   = "unibudget:framework"; // { income, needs, wants, savings }
+
+  // ---- Helpers ----
+  function secRead()  { try { return JSON.parse(localStorage.getItem(SEC_KEY)) || {}; } catch(e){ return {}; } }
+  function secWrite(v){ localStorage.setItem(SEC_KEY, JSON.stringify(v)); }
+  function fwRead()   { try { return JSON.parse(localStorage.getItem(FW_KEY))  || {income:0,needs:50,wants:30,savings:20}; } catch(e){ return {income:0,needs:50,wants:30,savings:20}; } }
+  function fwWrite(v) { localStorage.setItem(FW_KEY, JSON.stringify(v)); }
+
+  function qs(id){ return document.getElementById(id); }
+
+  async function hashPin(pin, salt) {
+    var data = new TextEncoder().encode(salt + "::" + pin);
+    var buf  = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+  }
+  function randSalt16(){ var a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a).map(function(b){ return b.toString(16).padStart(2,"0"); }).join(""); }
+
+  function appToast(msg){
+    var t = document.getElementById("toast");
+    if (!t) return;
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(appToast._t);
+    appToast._t = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ---- Currency helper (mirrors main app) ----
+  function getCurrency(){
+    var sel = document.getElementById("currency");
+    var map = { PHP:"₱", USD:"$", EUR:"€", GBP:"£", JPY:"¥" };
+    return map[(sel && sel.value) || "PHP"] || "₱";
+  }
+  function fmtMoney(n){
+    if (!(n > 0)) return "—";
+    return getCurrency() + n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  // ===========================================================
+  //  PIN LOCK SCREEN
+  // ===========================================================
+  var pinBuffer = "";
+  var pinUnlocked = false;
+
+  function showPinLock(){
+    var sec = secRead();
+    if (!sec.pinHash) { pinUnlocked = true; return; }  // no PIN set → skip
+    qs("pinLock").classList.add("show");
+    pinBuffer = "";
+    updatePinDots("pd", pinBuffer);
+    qs("pinErr").textContent = "";
+  }
+
+  function updatePinDots(prefix, buf){
+    for (var i=0;i<4;i++){
+      var d = qs(prefix+i);
+      if (d) d.classList.toggle("filled", i < buf.length);
+    }
+  }
+
+  function pinLockError(){
+    var dots = [qs("pd0"),qs("pd1"),qs("pd2"),qs("pd3")];
+    dots.forEach(function(d){ if(d){ d.classList.remove("filled"); d.classList.add("error"); } });
+    setTimeout(function(){
+      dots.forEach(function(d){ if(d) d.classList.remove("error"); });
+      pinBuffer = "";
+      updatePinDots("pd", pinBuffer);
+    }, 600);
+    qs("pinErr").textContent = "Incorrect PIN — try again";
+  }
+
+  async function verifyAndUnlock(){
+    var sec = secRead();
+    var h = await hashPin(pinBuffer, sec.pinSalt);
+    if (h === sec.pinHash){
+      pinUnlocked = true;
+      qs("pinLock").classList.remove("show");
+      qs("pinErr").textContent = "";
+    } else {
+      pinLockError();
+    }
+  }
+
+  qs("pinPad").addEventListener("click", function(e){
+    var btn = e.target.closest(".pin-key"); if (!btn) return;
+    if (btn.classList.contains("del")){
+      pinBuffer = pinBuffer.slice(0, -1);
+      updatePinDots("pd", pinBuffer);
+      qs("pinErr").textContent = "";
+      return;
+    }
+    var k = btn.getAttribute("data-k");
+    if (!k || pinBuffer.length >= 4) return;
+    pinBuffer += k;
+    updatePinDots("pd", pinBuffer);
+    if (pinBuffer.length === 4) verifyAndUnlock();
+  });
+
+  // Keyboard support for PIN lock
+  document.addEventListener("keydown", function(e){
+    var lock = qs("pinLock");
+    if (!lock || !lock.classList.contains("show")) return;
+    if (e.key >= "0" && e.key <= "9" && pinBuffer.length < 4){
+      pinBuffer += e.key;
+      updatePinDots("pd", pinBuffer);
+      if (pinBuffer.length === 4) verifyAndUnlock();
+    } else if (e.key === "Backspace"){
+      pinBuffer = pinBuffer.slice(0,-1);
+      updatePinDots("pd", pinBuffer);
+      qs("pinErr").textContent = "";
+    }
+  });
+
+  // Forget PIN → bypass to auth screen (logs out)
+  qs("pinForget").addEventListener("click", function(){
+    if (!confirm("This will log you out and you can sign back in with email & password. Continue?")) return;
+    qs("pinLock").classList.remove("show");
+    // trigger logout if main app is ready
+    var logoutBtn = document.getElementById("logoutBtn2");
+    if (logoutBtn) logoutBtn.click();
+  });
+
+  // Hook into app boot: show lock if PIN is set
+  var _origEnterApp = null;
+  function hookEnterApp(){
+    // We watch for body.authed class addition which signals the app booted
+    var observer = new MutationObserver(function(muts){
+      muts.forEach(function(m){
+        if (m.attributeName === "class" && document.body.classList.contains("authed") && !pinUnlocked){
+          showPinLock();
+        }
+      });
+    });
+    observer.observe(document.body, { attributes: true });
+  }
+  hookEnterApp();
+
+  // ===========================================================
+  //  50/30/20 FRAMEWORK MODAL
+  // ===========================================================
+  var fwData = fwRead();
+
+  function fwSym(){
+    var sel = document.getElementById("currency");
+    var map = { PHP:"₱", USD:"$", EUR:"€", GBP:"£", JPY:"¥" };
+    return map[(sel && sel.value) || "PHP"] || "₱";
+  }
+
+  function openFramework(){
+    fwData = fwRead();
+    qs("fwIncome").value = fwData.income || "";
+    qs("fwNeedsPct").value = fwData.needs;
+    qs("fwWantsPct").value = fwData.wants;
+    qs("fwSavePct").value  = fwData.savings;
+    qs("fwIncSym").textContent = fwSym();
+    fwRefresh();
+    qs("fwScrim").classList.add("show");
+  }
+  function closeFramework(){ qs("fwScrim").classList.remove("show"); }
+
+  function fwRefresh(){
+    var income  = parseFloat(qs("fwIncome").value) || 0;
+    var needs   = parseFloat(qs("fwNeedsPct").value)  || 0;
+    var wants   = parseFloat(qs("fwWantsPct").value)  || 0;
+    var savings = parseFloat(qs("fwSavePct").value)   || 0;
+    var total   = needs + wants + savings;
+
+    // Update sum indicator
+    var sv = qs("fwSumVal");
+    sv.textContent = total + "%";
+    sv.className   = "fw-sum-val " + (total === 100 ? "ok" : "bad");
+
+    // Update allocation bar
+    qs("fwBandNeeds").style.width  = Math.min(needs,100)  + "%";
+    qs("fwBandWants").style.width  = Math.min(wants,100)  + "%";
+    qs("fwBandSave").style.width   = Math.min(savings,100) + "%";
+
+    // Update money amounts
+    qs("fwNeedsAmt").textContent = income > 0 ? fmtMoney(income * needs   / 100) : "—";
+    qs("fwWantsAmt").textContent = income > 0 ? fmtMoney(income * wants   / 100) : "—";
+    qs("fwSaveAmt").textContent  = income > 0 ? fmtMoney(income * savings / 100) : "—";
+
+    // Donut chart (SVG stroke-dasharray on a r=15.915 circle ≈ circumference 100)
+    var circumference = 100;
+    function donutSlice(pct, offset){
+      return Math.max(0, Math.min(pct, 100)) + " " + (100 - Math.min(pct, 100));
+    }
+    // needs offset = 25 (start top). wants offset = 25 - needs. savings = 25 - needs - wants.
+    var nOff  = 25;
+    var wOff  = 25 - needs;
+    var sOff  = 25 - needs - wants;
+    qs("fwDonutNeeds").setAttribute("stroke-dasharray", donutSlice(needs,  100));
+    qs("fwDonutNeeds").setAttribute("stroke-dashoffset", nOff);
+    qs("fwDonutWants").setAttribute("stroke-dasharray", donutSlice(wants,  100));
+    qs("fwDonutWants").setAttribute("stroke-dashoffset", wOff);
+    qs("fwDonutSave").setAttribute("stroke-dasharray",  donutSlice(savings,100));
+    qs("fwDonutSave").setAttribute("stroke-dashoffset",  sOff);
+    qs("fwDonutPct").textContent = total + "%";
+    qs("fwDonutPct").style.color = total === 100 ? "var(--income)" : "var(--spent)";
+
+    // Actual spending breakdown from main app state (if available)
+    updateActualSpending();
+  }
+
+  // Maps existing expense categories to Needs / Wants / Savings buckets
+  var NEEDS_CATS  = ["Food & Dining", "Rent & Utilities", "Books & Supplies", "Transportation", "Load & Data"];
+  var WANTS_CATS  = ["Fun & Social", "Subscriptions", "Other"];
+  // Savings = any income category or detected savings transactions
+
+  function updateActualSpending(){
+    try {
+      // Access main app's state via closure – falls back gracefully
+      var raw = null;
+      var sessionRaw = localStorage.getItem("unibudget:session");
+      var session = sessionRaw ? JSON.parse(sessionRaw) : null;
+      if (session && session.email){
+        raw = localStorage.getItem("unibudget:data:" + session.email.toLowerCase());
+      }
+      if (!raw) { qs("fwActNeeds").textContent = "—"; qs("fwActWants").textContent = "—"; qs("fwActSave").textContent = "—"; return; }
+      var data = JSON.parse(raw);
+      var txns = (data.txns || []).filter(function(t){ return !t.deleted; });
+      var needsAmt=0, wantsAmt=0, incomeAmt=0;
+      txns.forEach(function(t){
+        if (t.type === "expense"){
+          if (NEEDS_CATS.indexOf(t.cat) !== -1) needsAmt += t.amount;
+          else wantsAmt += t.amount;
+        } else {
+          incomeAmt += t.amount;
+        }
+      });
+      var saveAmt = Math.max(0, incomeAmt - needsAmt - wantsAmt);
+      qs("fwActNeeds").textContent = fmtMoney(needsAmt);
+      qs("fwActWants").textContent = fmtMoney(wantsAmt);
+      qs("fwActSave").textContent  = fmtMoney(saveAmt);
+    } catch(e) { qs("fwActNeeds").textContent = "—"; qs("fwActWants").textContent = "—"; qs("fwActSave").textContent = "—"; }
+  }
+
+  function fwSaveData(){
+    var needs   = parseFloat(qs("fwNeedsPct").value)  || 0;
+    var wants   = parseFloat(qs("fwWantsPct").value)  || 0;
+    var savings = parseFloat(qs("fwSavePct").value)   || 0;
+    var total   = needs + wants + savings;
+    if (total !== 100){ appToast("❌ Percentages must add up to exactly 100%"); return; }
+    var income = parseFloat(qs("fwIncome").value) || 0;
+    fwData = { income: income, needs: needs, wants: wants, savings: savings };
+    fwWrite(fwData);
+    appToast("📊 Budget framework saved ✓");
+    closeFramework();
+  }
+
+  // Wire up framework
+  ["fwNeedsPct","fwWantsPct","fwSavePct","fwIncome"].forEach(function(id){
+    qs(id).addEventListener("input", fwRefresh);
+  });
+  qs("fwClose").addEventListener("click", closeFramework);
+  qs("fwScrim").addEventListener("click", function(e){ if(e.target===this) closeFramework(); });
+  qs("fwSave").addEventListener("click", fwSaveData);
+  qs("fwReset").addEventListener("click", function(){
+    qs("fwNeedsPct").value = 50;
+    qs("fwWantsPct").value = 30;
+    qs("fwSavePct").value  = 20;
+    fwRefresh();
+  });
+
+  // Account panel + header menu wiring for framework
+  qs("frameworkBtn").addEventListener("click", openFramework);
+  qs("menuFramework").addEventListener("click", function(){ document.getElementById("menuPop").classList.remove("show"); openFramework(); });
+
+  // ===========================================================
+  //  SECURITY & PRIVACY MODAL
+  // ===========================================================
+
+  // -- PIN setup state --
+  var secCurPin = "";
+  var secNewPin = "";
+
+  function secPinDotPrefix(which){
+    return which === "cur" ? "scp" : "snp";
+  }
+  function updateSetupDots(which, buf){
+    var prefix = secPinDotPrefix(which);
+    for (var i=0;i<4;i++){
+      var d = qs(prefix+i);
+      if (d) d.classList.toggle("filled", i < buf.length);
+    }
+  }
+
+  function openSecurity(){
+    var sec = secRead();
+    var hasPIN = !!sec.pinHash;
+    qs("secPinStatus").textContent = hasPIN ? "✅ A PIN is currently set." : "No PIN is set — the app opens without a lock screen.";
+    qs("secPinCurrentWrap").style.display = hasPIN ? "block" : "none";
+    // Reset inputs
+    secCurPin = ""; secNewPin = "";
+    updateSetupDots("cur", secCurPin);
+    updateSetupDots("new", secNewPin);
+    qs("secPinErr").textContent = "";
+    // Password panel reset
+    ["secCurPw","secNewPw","secConfPw"].forEach(function(id){ var e=qs(id); if(e) e.value=""; });
+    qs("secPwErr").textContent = "";
+    // Show PIN tab by default
+    setSecTab("pin");
+    qs("secScrim").classList.add("show");
+  }
+  function closeSecurity(){ qs("secScrim").classList.remove("show"); }
+
+  function setSecTab(tab){
+    var isPIN = tab === "pin";
+    qs("secTabPin").className = isPIN ? "on" : "";
+    qs("secTabPw").className  = isPIN ? "" : "on";
+    qs("secPinPanel").style.display = isPIN ? "block" : "none";
+    qs("secPwPanel").style.display  = isPIN ? "none" : "block";
+  }
+
+  // PIN keypad in security modal
+  document.addEventListener("click", function(e){
+    var btn = e.target.closest(".pin-setup-key");
+    if (!btn) return;
+    var which = btn.getAttribute("data-pp");
+    if (!which) return;
+    var k = btn.getAttribute("data-k");
+    if (btn.classList.contains("del")){
+      if (which === "cur") { secCurPin = secCurPin.slice(0,-1); updateSetupDots("cur", secCurPin); }
+      else                 { secNewPin = secNewPin.slice(0,-1); updateSetupDots("new", secNewPin); }
+      qs("secPinErr").textContent = "";
+      return;
+    }
+    if (!k) return;
+    if (which === "cur" && secCurPin.length < 4){ secCurPin += k; updateSetupDots("cur", secCurPin); }
+    if (which === "new" && secNewPin.length < 4){ secNewPin += k; updateSetupDots("new", secNewPin); }
+  });
+
+  qs("secPinSave").addEventListener("click", async function(){
+    var sec = secRead();
+    var hasPIN = !!sec.pinHash;
+    qs("secPinErr").textContent = "";
+
+    // If PIN already set, verify current PIN first
+    if (hasPIN){
+      if (secCurPin.length < 4){ qs("secPinErr").textContent = "Enter your current 4-digit PIN first."; return; }
+      var ch = await hashPin(secCurPin, sec.pinSalt);
+      if (ch !== sec.pinHash){ qs("secPinErr").textContent = "Current PIN is incorrect."; secCurPin=""; updateSetupDots("cur",secCurPin); return; }
+    }
+    if (secNewPin.length < 4){ qs("secPinErr").textContent = "Enter a full 4-digit new PIN."; return; }
+
+    var salt = randSalt16();
+    var hash = await hashPin(secNewPin, salt);
+    secWrite({ pinHash: hash, pinSalt: salt });
+    pinUnlocked = true; // stay unlocked in current session
+    appToast("🔒 PIN saved — app will prompt on next launch ✓");
+    closeSecurity();
+  });
+
+  qs("secPinRemove").addEventListener("click", async function(){
+    var sec = secRead();
+    if (!sec.pinHash){ appToast("No PIN is set."); return; }
+    if (secCurPin.length < 4){ qs("secPinErr").textContent = "Enter your current PIN to remove it."; return; }
+    var ch = await hashPin(secCurPin, sec.pinSalt);
+    if (ch !== sec.pinHash){ qs("secPinErr").textContent = "Current PIN is incorrect."; secCurPin=""; updateSetupDots("cur",secCurPin); return; }
+    secWrite({});
+    pinUnlocked = true;
+    appToast("🔓 PIN removed — app will open without a lock screen.");
+    closeSecurity();
+  });
+
+  // Password show/hide toggles in security modal
+  qs("secPwPanel").querySelectorAll(".toggle").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var tgt = qs(this.getAttribute("data-tgt"));
+      if (!tgt) return;
+      var show = tgt.type === "password";
+      tgt.type = show ? "text" : "password";
+      this.textContent = show ? "Hide" : "Show";
+    });
+  });
+
+  qs("secPwSave").addEventListener("click", async function(){
+    var curPw  = qs("secCurPw").value;
+    var newPw  = qs("secNewPw").value;
+    var confPw = qs("secConfPw").value;
+    qs("secPwErr").textContent = "";
+    if (!curPw){ qs("secPwErr").textContent = "Enter your current password."; return; }
+    if (newPw.length < 6){ qs("secPwErr").textContent = "New password must be at least 6 characters."; return; }
+    if (newPw !== confPw){ qs("secPwErr").textContent = "Passwords do not match."; return; }
+
+    // Verify current password via main app's Auth object
+    try {
+      var sessionRaw = localStorage.getItem("unibudget:session");
+      var session = sessionRaw ? JSON.parse(sessionRaw) : null;
+      if (!session || !session.email) { qs("secPwErr").textContent = "Session error — please re-login."; return; }
+
+      if (window.Cloud && window.Cloud.enabled && window.Cloud.client){
+        // Cloud mode: use Supabase updateUser
+        var r = await window.Cloud.client.auth.signInWithPassword({ email: session.email, password: curPw });
+        if (r.error){ qs("secPwErr").textContent = "Current password is incorrect."; return; }
+        var u = await window.Cloud.client.auth.updateUser({ password: newPw });
+        if (u.error){ qs("secPwErr").textContent = u.error.message; return; }
+      } else {
+        // Device mode: re-hash current password and compare
+        var usersRaw = localStorage.getItem("unibudget:users");
+        var users = usersRaw ? JSON.parse(usersRaw) : {};
+        var u = users[session.email];
+        if (!u){ qs("secPwErr").textContent = "Account not found."; return; }
+        var curHash = await (async function(){
+          var data = new TextEncoder().encode(u.salt + "::" + curPw);
+          var buf  = await crypto.subtle.digest("SHA-256", data);
+          return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+        })();
+        if (curHash !== u.hash){ qs("secPwErr").textContent = "Current password is incorrect."; return; }
+        // Save new password
+        var newSalt = randSalt16();
+        var newHash = await (async function(){
+          var data = new TextEncoder().encode(newSalt + "::" + newPw);
+          var buf  = await crypto.subtle.digest("SHA-256", data);
+          return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+        })();
+        users[session.email].salt = newSalt;
+        users[session.email].hash = newHash;
+        localStorage.setItem("unibudget:users", JSON.stringify(users));
+      }
+      appToast("✅ Password updated successfully!");
+      ["secCurPw","secNewPw","secConfPw"].forEach(function(id){ var e=qs(id); if(e) e.value=""; });
+      closeSecurity();
+    } catch(err){
+      qs("secPwErr").textContent = err.message || "Something went wrong.";
+    }
+  });
+
+  // Tab switchers
+  qs("secTabPin").addEventListener("click", function(){ setSecTab("pin"); });
+  qs("secTabPw").addEventListener("click",  function(){ setSecTab("pw");  });
+
+  // Modal wiring
+  qs("secClose").addEventListener("click", closeSecurity);
+  qs("secScrim").addEventListener("click", function(e){ if(e.target===this) closeSecurity(); });
+
+  // Account panel + header menu wiring for security
+  qs("securityBtn").addEventListener("click", openSecurity);
+  qs("menuSecurity").addEventListener("click", function(){ document.getElementById("menuPop").classList.remove("show"); openSecurity(); });
+
+  // Escape key closes new modals too
+  document.addEventListener("keydown", function(e){
+    if (e.key !== "Escape") return;
+    if (qs("fwScrim")  && qs("fwScrim").classList.contains("show"))  closeFramework();
+    if (qs("secScrim") && qs("secScrim").classList.contains("show")) closeSecurity();
+  });
+
 })();
 </script>
 
