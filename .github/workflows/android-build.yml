@@ -9,12 +9,12 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
-# Cancel in-progress runs for the same branch/PR
+# Cancel in-progress runs for the same branch/PR to avoid wasted runner minutes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Least-privilege default; jobs override as needed
+# Least-privilege default; individual jobs override only what they need.
 permissions:
   contents: read
   actions: read
@@ -26,6 +26,8 @@ jobs:
   test:
     name: JS Unit Tests
     runs-on: ubuntu-latest
+    # Safety net: kills the job if tests hang (e.g. infinite loop in test code).
+    timeout-minutes: 15
 
     permissions:
       contents: read
@@ -33,16 +35,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4   # Node 20 runtime ✔
         with:
           fetch-depth: 0
-          # persist-credentials: false prevents the post-job git cleanup
-          # step from running git commands that cause exit code 128
+          # FIX: persist-credentials: false is correct for a read-only job.
+          # Removed the redundant `token:` field — it has no effect when
+          # persist-credentials is false and was causing confusion.
           persist-credentials: false
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Repo has a broken gitlink (J-Monika-UniBudget-v1.0) with no
+          # .gitmodules URL entry — skip submodule init entirely.
+          submodules: false
 
       - name: Set up Node 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4   # Node 20 runtime ✔
         with:
           node-version: '20'
           cache: 'npm'
@@ -60,29 +65,37 @@ jobs:
     name: Build Debug APK
     runs-on: ubuntu-latest
     needs: test
+    # 30 min is generous for a cold Gradle + AGP build; hot-cache builds
+    # typically finish in 8–12 min. Kills the job if Gradle hangs.
+    timeout-minutes: 30
 
     permissions:
       contents: read
-      actions: read
+      actions: read   # needed by actions/upload-artifact and actions/cache
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4   # Node 20 runtime ✔
         with:
           fetch-depth: 0
+          # FIX: read-only job — no credentials stored in Git config.
+          # Token field removed (it is silently ignored when persist-credentials
+          # is false, so including it was misleading).
           persist-credentials: false
-          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: false
 
-      # setup-java sets $JAVA_HOME to Temurin 21 — we pass this directly
-      # to Gradle via -Dorg.gradle.java.home below (no file patching needed)
+      # setup-java exports $JAVA_HOME pointing to Temurin 21.
+      # We pass $JAVA_HOME directly to Gradle via -Dorg.gradle.java.home
+      # in the build step below, overriding the hard-coded Windows path
+      # that is checked into android/gradle.properties.
       - name: Set up JDK 21 (Temurin LTS)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4   # Node 20 runtime ✔
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Set up Node 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4   # Node 20 runtime ✔
         with:
           node-version: '20'
           cache: 'npm'
@@ -91,7 +104,7 @@ jobs:
         run: npm ci
 
       - name: Cache Gradle wrapper & caches
-        uses: actions/cache@v4
+        uses: actions/cache@v4   # Node 20 runtime ✔
         with:
           path: |
             ~/.gradle/caches
@@ -100,27 +113,30 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      # Must run before any ./gradlew invocation on Linux
+      # Linux runners require the execute bit on gradlew (not tracked by git).
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # Write local.properties — this file is gitignored, safe to overwrite
-      # $ANDROID_SDK_ROOT is pre-set on all GitHub ubuntu-latest runners
+      # $ANDROID_SDK_ROOT is pre-set on all GitHub ubuntu-latest runners.
+      # Writing local.properties here is safe — the file is gitignored.
       - name: Set Android SDK path
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      # ── KEY FIX ──────────────────────────────────────────────
-      # We do NOT patch android/gradle.properties (a tracked git file).
-      # Patching tracked files causes the post-checkout cleanup to call
-      # git with stale state and exit 128.
+      # ── KEY FIX ───────────────────────────────────────────────────────────
+      # android/gradle.properties (a tracked git file) contains:
+      #   org.gradle.java.home=C:\Users\MRMD\jdk21\jdk-21.0.11+10   ← Windows only!
+      # We do NOT patch the tracked file (that would dirty the workspace and
+      # cause git to fail on post-checkout cleanup with exit 128).
       #
-      # Instead we override everything via environment + CLI flags:
-      #   GRADLE_OPTS  → replaces org.gradle.jvmargs (-Xmx3g fits CI RAM)
-      #   -Dorg.gradle.java.home → overrides the Windows local JDK path
-      # ──────────────────────────────────────────────────────────
-      - name: Build debug APK
+      # Instead we use two overrides that take priority over the file:
+      #   GRADLE_OPTS  → overrides org.gradle.jvmargs (-Xmx3g fits CI RAM)
+      #   -Dorg.gradle.java.home → overrides the JDK path with $JAVA_HOME
+      #     set by setup-java above (Temurin 21 on Linux).
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Build debug APK  (versionCode 10 / versionName "10.0")
         env:
-          # 3 GB fits GitHub's 7 GB free runner (leaves room for Android tools)
+          # Override org.gradle.jvmargs from gradle.properties.
+          # 3 GB fits GitHub's 7 GB free runner (leaves headroom for Android tools).
           GRADLE_OPTS: >-
             -Xmx3g
             -XX:MaxMetaspaceSize=512m
@@ -133,9 +149,13 @@ jobs:
             --stacktrace \
             --info \
             -Dorg.gradle.java.home="$JAVA_HOME"
+          #   ↑ Overrides org.gradle.java.home in gradle.properties so the
+          #     Linux CI runner uses Temurin 21 instead of the local Windows path.
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+      # Upload the APK keyed by commit SHA so it can be downloaded by the
+      # release job below. retention-days=30 matches the branch-push use-case.
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4   # Node 20 runtime ✔
         with:
           name: UniBudget-debug-${{ github.sha }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -143,85 +163,70 @@ jobs:
           retention-days: 30
 
   # ─────────────────────────────────────────────────────────────
-  # Job 3 – GitHub Release (v* tags only)
+  # Job 3 – GitHub Release  (v* tags only)
   # ─────────────────────────────────────────────────────────────
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
     needs: build-debug
+    # Only publish a release when a version tag (e.g. v.10) is pushed.
     if: startsWith(github.ref, 'refs/tags/v')
+    # Short timeout — this job only downloads an artifact and calls the
+    # GitHub API; no compilation involved.
+    timeout-minutes: 15
 
     permissions:
-      contents: write   # required to publish a GitHub Release
-      actions: read
+      contents: write   # required to create/publish a GitHub Release
+      actions: read     # required to download the artifact from build-debug
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4   # Node 20 runtime ✔
         with:
           fetch-depth: 0
-          persist-credentials: false
+          # FIX: persist-credentials MUST be true here so that the
+          # GITHUB_TOKEN is stored in Git config. softprops/action-gh-release
+          # calls the GitHub API using these stored credentials to create the
+          # release and upload the APK asset.
+          persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: false
 
-      - name: Set up JDK 21 (Temurin LTS)
-        uses: actions/setup-java@v4
+      # FIX: Download the APK that was already built and verified by the
+      # build-debug job above. This replaces the previous approach of
+      # re-running the full JDK + Gradle + Node stack here, which:
+      #   (a) wasted ~10 min of runner time on every release, and
+      #   (b) risked producing a slightly different binary than what was tested.
+      # The released APK is now byte-for-byte identical to the tested artifact.
+      - name: Download APK from build-debug job
+        uses: actions/download-artifact@v4   # Node 20 runtime ✔
         with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      - name: Set Android SDK path
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-
-      - name: Build debug APK
-        env:
-          GRADLE_OPTS: >-
-            -Xmx3g
-            -XX:MaxMetaspaceSize=512m
-            -XX:+HeapDumpOnOutOfMemoryError
-            -Dfile.encoding=UTF-8
-        run: |
-          cd android
-          ./gradlew assembleDebug \
-            --no-daemon \
-            --stacktrace \
-            -Dorg.gradle.java.home="$JAVA_HOME"
+          name: UniBudget-debug-${{ github.sha }}
+          # Download into the workspace root for easy reference below.
+          path: ./release-apk
 
       - name: Rename APK with version tag
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
+          cp ./release-apk/app-debug.apk \
              "UniBudget-${{ github.ref_name }}-debug.apk"
 
+      # Publish the GitHub Release and upload the APK as a release asset.
+      # GITHUB_TOKEN is auto-provided by Actions; the `token` input of this
+      # action and the env var are both set for belt-and-suspenders auth.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        env:
+          # Explicit token env var — some versions of the action prefer this
+          # over the `token` input for API authentication.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: "UniBudget ${{ github.ref_name }}"
           body: |
             ## UniBudget ${{ github.ref_name }}
 
             ### What's in this release
-            - Budget alert system: 75% and 100% spending threshold notifications
+            - Budget alert system: 75 % and 100 % spending threshold notifications
             - Custom thresholds (percentage / fixed-amount / amount-remaining)
             - GCash / Maya / ShopeePay / GrabPay auto-detection
             - In-app warning banners + Android system push notifications
