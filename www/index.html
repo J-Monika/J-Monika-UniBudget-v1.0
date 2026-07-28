@@ -2267,6 +2267,8 @@
   function logout(){
     Auth.logout();
     currentUser = null; state = null;
+    // Reset PIN session lock so the lock screen fires again on next login
+    if (typeof window.__ubResetPin === "function") window.__ubResetPin();
     document.body.classList.remove("authed");
     el("#menuPop").classList.remove("show");
     el("#authForm").reset();
@@ -2467,10 +2469,12 @@
     if (logoutBtn) logoutBtn.click();
   });
 
+  // Expose a reset hook so the main IIFE's logout() can clear pinUnlocked
+  window.__ubResetPin = function(){ pinUnlocked = false; };
+
   // Hook into app boot: show lock if PIN is set
-  var _origEnterApp = null;
   function hookEnterApp(){
-    // We watch for body.authed class addition which signals the app booted
+    // Watch for future body.authed additions (login within same page session)
     var observer = new MutationObserver(function(muts){
       muts.forEach(function(m){
         if (m.attributeName === "class" && document.body.classList.contains("authed") && !pinUnlocked){
@@ -2479,6 +2483,15 @@
       });
     });
     observer.observe(document.body, { attributes: true });
+
+    // ---- CRITICAL FIX: eager boot check ----
+    // The main IIFE's boot() runs synchronously BEFORE this security IIFE
+    // registers the MutationObserver, so the 'authed' class mutation is
+    // already missed on cold start. Check right now if the body is already
+    // authed (session restored) and the PIN has not been verified yet.
+    if (document.body.classList.contains("authed") && !pinUnlocked){
+      showPinLock();
+    }
   }
   hookEnterApp();
 
