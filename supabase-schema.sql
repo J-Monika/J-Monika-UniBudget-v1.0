@@ -62,3 +62,30 @@ create policy "own budget - insert" on public.budgets
 drop policy if exists "own budget - update" on public.budgets;
 create policy "own budget - update" on public.budgets
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Per-row Peer Ledger (Utang / Pa-Suyo tracker) entries for offline-first sync (LWW + tombstones).
+create table if not exists public.peer_ledger (
+  user_id           uuid not null references auth.users (id) on delete cascade,
+  id                text not null,
+  type              text not null check (type in ('UTANG_GIVEN','UTANG_TAKEN','PA_SUYO')),
+  counterparty_name text not null,
+  amount            numeric(14,2) not null,
+  currency          text not null default 'PHP',
+  description       text,
+  status            text not null default 'UNSETTLED' check (status in ('UNSETTLED','PARTIALLY_SETTLED','SETTLED')),
+  settled_amount    numeric(14,2) not null default 0,
+  due_date          timestamptz,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  deleted           boolean not null default false,
+  primary key (user_id, id)
+);
+create index if not exists peer_ledger_sync_idx
+  on public.peer_ledger (user_id, updated_at);
+
+alter table public.peer_ledger enable row level security;
+
+drop policy if exists "own peer_ledger - all" on public.peer_ledger;
+create policy "own peer_ledger - all" on public.peer_ledger
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+

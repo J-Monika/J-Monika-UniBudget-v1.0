@@ -42,25 +42,30 @@
     return msg || "Something went wrong. Please try again.";
   }
 
-  // ---- (de)serialization between local txn objects and DB rows ----
-  function rowFromTxn(uid, t) {
+  // ---- (de)serialization between local peer ledger objects and DB rows ----
+  function rowFromPeerLedger(uid, e) {
     return {
-      user_id: uid, id: t.id,
-      amount: t.amount, type: t.type,
-      category: t.cat || null, description: t.desc || null,
-      occurred_at: new Date(t.ts).toISOString(),
-      updated_at: new Date(t.updated_at || t.ts).toISOString(),
-      deleted: !!t.deleted
+      user_id: uid, id: e.id,
+      type: e.type, counterparty_name: e.counterpartyName,
+      amount: e.amount, currency: e.currency || "PHP",
+      description: e.description || null, status: e.status || "UNSETTLED",
+      settled_amount: e.settledAmount || 0,
+      due_date: e.dueDate ? new Date(e.dueDate).toISOString() : null,
+      created_at: new Date(e.createdAt || Date.now()).toISOString(),
+      updated_at: new Date(e.updatedAt || Date.now()).toISOString(),
+      deleted: !!e.deleted
     };
   }
-  function txnFromRow(r) {
+  function peerLedgerFromRow(r) {
     return {
-      id: r.id, amount: Number(r.amount), type: r.type,
-      cat: r.category || "Other", desc: r.description || "",
-      ts: new Date(r.occurred_at).getTime(),
-      updated_at: new Date(r.updated_at).getTime(),
-      deleted: !!r.deleted,
-      source: String(r.id).indexOf("gcash-") === 0 ? "gcash-auto" : undefined
+      id: r.id, type: r.type, counterpartyName: r.counterparty_name,
+      amount: Number(r.amount), currency: r.currency || "PHP",
+      description: r.description || "", status: r.status,
+      settledAmount: Number(r.settled_amount),
+      dueDate: r.due_date ? new Date(r.due_date).getTime() : null,
+      createdAt: new Date(r.created_at).getTime(),
+      updatedAt: new Date(r.updated_at).getTime(),
+      deleted: !!r.deleted
     };
   }
 
@@ -80,19 +85,27 @@
 
       var wmKey = pushWM(email);
       var lastPush = Number(localStorage.getItem(wmKey) || 0);
-      var changed = (state.txns || []).filter(function (t) { return (t.updated_at || t.ts || 0) > lastPush; });
+      var changedTxns = (state.txns || []).filter(function (t) { return (t.updated_at || t.ts || 0) > lastPush; });
+      var changedPeer = (state.peerLedger || []).filter(function (p) { return (p.updatedAt || p.createdAt || 0) > lastPush; });
 
-      if (changed.length) {
+      if (changedTxns.length) {
         var res = await sb.from("transactions")
-          .upsert(changed.map(function (t) { return rowFromTxn(u.id, t); }), { onConflict: "user_id,id" });
+          .upsert(changedTxns.map(function (t) { return rowFromTxn(u.id, t); }), { onConflict: "user_id,id" });
         if (res.error) throw res.error;
+      }
+      if (changedPeer.length) {
+        var resPeer = await sb.from("peer_ledger")
+          .upsert(changedPeer.map(function (p) { return rowFromPeerLedger(u.id, p); }), { onConflict: "user_id,id" });
+        if (resPeer.error) throw resPeer.error;
       }
       var res2 = await sb.from("budgets").upsert(
         { user_id: u.id, data: { currency: state.currency, limits: state.limits, notifications: state.notifications }, updated_at: new Date().toISOString() },
         { onConflict: "user_id" });
       if (res2.error) throw res2.error;
 
-      var maxU = changed.reduce(function (a, t) { return Math.max(a, t.updated_at || t.ts || 0); }, lastPush);
+      var maxTxn = changedTxns.reduce(function (a, t) { return Math.max(a, t.updated_at || t.ts || 0); }, lastPush);
+      var maxPeer = changedPeer.reduce(function (a, p) { return Math.max(a, p.updatedAt || p.createdAt || 0); }, lastPush);
+      var maxU = Math.max(maxTxn, maxPeer);
       localStorage.setItem(wmKey, String(maxU));
       markSynced(true);
     } catch (e) {
@@ -116,7 +129,11 @@
         .eq("user_id", u.id).gt("updated_at", new Date(lastPull).toISOString());
       if (res.error) throw res.error;
 
-      var cache = readCache(email) || { currency: "PHP", limits: {}, txns: [] };
+      var resPeer = await sb.from("peer_ledger").select("*")
+        .eq("user_id", u.id).gt("updated_at", new Date(lastPull).toISOString());
+      if (resPeer.error) throw resPeer.error;
+
+      var cache = readCache(email) || { currency: "PHP", limits: {}, txns: [], peerLedger: [] };
       var byId = {}; (cache.txns || []).forEach(function (t) { byId[t.id] = t; });
       var maxU = lastPull;
       (res.data || []).forEach(function (r) {
@@ -125,6 +142,15 @@
         var cur = byId[incoming.id];
         if (!cur || incoming.updated_at >= (cur.updated_at || cur.ts || 0)) { byId[incoming.id] = incoming; changedLocal = true; }
       });
+
+      var byIdPeer = {}; (cache.peerLedger || []).forEach(function (p) { byIdPeer[p.id] = p; });
+      (resPeer.data || []).forEach(function (r) {
+        var incoming = peerLedgerFromRow(r);
+        maxU = Math.max(maxU, incoming.updatedAt);
+        var cur = byIdPeer[incoming.id];
+        if (!cur || incoming.updatedAt >= (cur.updatedAt || cur.createdAt || 0)) { byIdPeer[incoming.id] = incoming; changedLocal = true; }
+      });
+
       var sres = await sb.from("budgets").select("data").eq("user_id", u.id).maybeSingle();
       if (sres.data && sres.data.data) {
         if (sres.data.data.currency) cache.currency = sres.data.data.currency;
@@ -132,6 +158,7 @@
         if (sres.data.data.notifications) { cache.notifications = sres.data.data.notifications; changedLocal = true; }
       }
       cache.txns = Object.keys(byId).map(function (k) { return byId[k]; });
+      cache.peerLedger = Object.keys(byIdPeer).map(function (k) { return byIdPeer[k]; });
       writeCache(email, cache);
       localStorage.setItem(wmKey, String(maxU));
       if (changedLocal && window.UniBudget && window.UniBudget.reload) window.UniBudget.reload();

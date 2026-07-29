@@ -659,6 +659,86 @@
       #tabbar button span { font-size: 18px; }
     }
   }
+
+  /* ===== UTANG / PA-SUYO TRACKER STYLES ===== */
+  .utang-summary-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 26px 8px;
+  }
+  .utang-metric {
+    background: var(--page); border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .utang-metric-val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .utang-metric-val.pos { color: var(--income); }
+  .utang-metric-val.neg { color: var(--spent); }
+
+  .utang-list { padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .counterparty-card {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden;
+  }
+  .counterparty-head {
+    padding: 14px 16px; background: var(--page); cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    transition: background .15s;
+  }
+  .counterparty-head:hover { background: var(--track); }
+  .counterparty-name { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .counterparty-bal { font-weight: 800; font-size: 15px; }
+  .counterparty-bal.pos { color: var(--income); }
+  .counterparty-bal.neg { color: var(--spent); }
+  .counterparty-bal.zero { color: var(--muted); }
+
+  .utang-entries-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); }
+  .utang-entry-item {
+    display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
+    border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+  }
+  .utang-entry-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .utang-type-chip {
+    font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .utang-type-chip.given { background: var(--income-soft); color: var(--income); }
+  .utang-type-chip.taken { background: #fee2e2; color: var(--spent); }
+  .utang-type-chip.suyo { background: var(--accent-soft); color: var(--accent-strong); }
+  :root[data-theme="dark"] .utang-type-chip.taken { background: #3a1c1c; color: #fca5a5; }
+
+  .utang-status-chip { font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+  .utang-status-chip.unsettled { background: #fef3c7; color: #b45309; }
+  .utang-status-chip.partially { background: #e0e7ff; color: #4338ca; }
+  .utang-status-chip.settled { background: var(--income-soft); color: var(--income); }
+
+  .utang-progress-bar { height: 5px; border-radius: 999px; background: var(--track); overflow: hidden; margin-top: 4px; }
+  .utang-progress-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s ease; }
+
+  .utang-entry-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .utang-btn-settle {
+    border: 0; background: var(--accent); color: #fff; font-weight: 700; font-size: 12px;
+    padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: transform .1s;
+  }
+  .utang-btn-settle:active { transform: scale(.96); }
+  .utang-btn-del {
+    border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;
+  }
+  .utang-btn-del:hover { color: var(--spent); background: rgba(220,38,38,.1); }
+
+  .type-toggle-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .type-toggle-3 button {
+    border: 1.5px solid var(--line); background: var(--card); color: var(--muted);
+    padding: 10px 4px; border-radius: 12px; font-weight: 700; font-size: 12px; cursor: pointer;
+    font-family: inherit; transition: all .15s; text-align: center;
+  }
+  .type-toggle-3 button.on-given { border-color: var(--income); background: var(--income); color: #fff; }
+  .type-toggle-3 button.on-taken { border-color: var(--spent); background: var(--spent); color: #fff; }
+  .type-toggle-3 button.on-suyo { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+  .preset-chips-scroll { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
+  .preset-chips-scroll::-webkit-scrollbar { display: none; }
+  .preset-chip {
+    border: 1px solid var(--line); background: var(--page); color: var(--ink);
+    padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    white-space: nowrap; cursor: pointer; font-family: inherit; transition: background .12s, border-color .12s;
+  }
+  .preset-chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
 </style>
 </head>
 <body>
@@ -835,6 +915,27 @@
           <span class="side"><span class="link" id="syncNow">🔄 Sync Now</span> &nbsp; <span class="link" id="clearAll" style="color:var(--spent)">Clear All</span></span>
         </div>
         <div class="txns" id="txns"></div>
+      </section>
+
+      <!-- ===== UTANG / PA-SUYO TRACKER SECTION ===== -->
+      <section class="card" id="utangSection">
+        <div class="sec-head">
+          <h2>🤝 Utang / Pa-Suyo</h2>
+          <span class="side link" id="openUtangAddBtn">+ Add Record</span>
+        </div>
+
+        <div class="utang-summary-grid">
+          <div class="utang-metric">
+            <div class="eyebrow">They owe you</div>
+            <div class="utang-metric-val pos" id="utangOwedToYou">₱0.00</div>
+          </div>
+          <div class="utang-metric">
+            <div class="eyebrow">You owe</div>
+            <div class="utang-metric-val neg" id="utangYouOwe">₱0.00</div>
+          </div>
+        </div>
+
+        <div class="utang-list" id="utangList"></div>
       </section>
     </div>
   </div>
@@ -1150,14 +1251,111 @@
   </div>
 </div>
 
+<!-- ===== QUICK ADD UTANG / PA-SUYO MODAL ===== -->
+<div class="scrim" id="utangAddScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="utangAddTitle" style="max-width:480px">
+    <div class="modal-head">
+      <div>
+        <h3 id="utangAddTitle">🤝 Utang / Pa-Suyo Record</h3>
+        <p>Track micro-loans, peer debts, and shared classmate expenses.</p>
+      </div>
+      <button class="x" id="utangAddClose" aria-label="Close">✕</button>
+    </div>
+    <form id="utangAddForm" style="padding:4px 26px 24px;">
+      <div class="field">
+        <label>Entry Type</label>
+        <div class="type-toggle-3" id="utangTypeToggle">
+          <button type="button" id="uBtnGiven" class="on-given" data-utype="UTANG_GIVEN">Utang Given (+)</button>
+          <button type="button" id="uBtnTaken" data-utype="UTANG_TAKEN">Utang Taken (−)</button>
+          <button type="button" id="uBtnSuyo" data-utype="PA_SUYO">Pa-Suyo (+)</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="uCounterparty">Classmate / Friend Name</label>
+        <input id="uCounterparty" type="text" placeholder="e.g. Juan Dela Cruz, Dormmate" required />
+      </div>
+      <div class="field">
+        <label for="uAmount">Amount</label>
+        <div class="amt-wrap">
+          <span class="sym" id="uAmtSym">₱</span>
+          <input id="uAmount" class="num" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="uCurrency">Currency</label>
+        <select id="uCurrency" class="f">
+          <option value="PHP">₱ PHP</option>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+          <option value="GBP">£ GBP</option>
+          <option value="JPY">¥ JPY</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="uDesc">Description / Preset</label>
+        <div class="preset-chips-scroll">
+          <button type="button" class="preset-chip" data-preset="⚡ Electricity bill">⚡ Electricity</button>
+          <button type="button" class="preset-chip" data-preset="🍱 Food Run / Canteen">🍱 Food Run</button>
+          <button type="button" class="preset-chip" data-preset="🖨 Module Printouts">🖨 Printouts</button>
+          <button type="button" class="preset-chip" data-preset="📖 Textbook share">📖 Textbook</button>
+          <button type="button" class="preset-chip" data-preset="🚌 Jeep / Grab fare">🚌 Commute</button>
+          <button type="button" class="preset-chip" data-preset="📱 Load pasa">📱 Load</button>
+        </div>
+        <input id="uDesc" type="text" placeholder="e.g. Lunch favor, Dorm electricity share" />
+      </div>
+      <div class="field">
+        <label for="uDueDate">Due Date (Optional)</label>
+        <input id="uDueDate" type="date" />
+      </div>
+      <div class="modal-foot" style="padding:12px 0 0;">
+        <button type="button" class="ghost" id="utangAddCancel" style="flex:1">Cancel</button>
+        <button type="submit" class="submit" style="flex:1">Save Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== SETTLEMENT MODAL ===== -->
+<div class="scrim" id="utangSettleScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="utangSettleTitle" style="max-width:440px">
+    <div class="modal-head">
+      <div>
+        <h3 id="utangSettleTitle">💳 Settle Debt</h3>
+        <p id="utangSettleSub">Enter amount to settle for this record.</p>
+      </div>
+      <button class="x" id="utangSettleClose" aria-label="Close">✕</button>
+    </div>
+    <form id="utangSettleForm" style="padding:4px 26px 24px;">
+      <div class="field">
+        <label for="uSettleAmount">Amount to Settle</label>
+        <div class="amt-wrap">
+          <span class="sym" id="uSettleSym">₱</span>
+          <input id="uSettleAmount" class="num" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+        </div>
+        <div id="uSettleHint" style="font-size:12px; color:var(--muted); font-weight:600; margin-top:2px;"></div>
+      </div>
+      <div class="field" style="flex-direction:row; align-items:center; gap:10px; padding:6px 0;">
+        <input type="checkbox" id="uSettleLogTxn" checked style="width:18px; height:18px; cursor:pointer;" />
+        <label for="uSettleLogTxn" style="font-size:13px; font-weight:700; cursor:pointer; margin:0;">
+          Log settlement in main UniBudget spending history
+        </label>
+      </div>
+      <div class="modal-foot" style="padding:12px 0 0;">
+        <button type="button" class="ghost" id="utangSettleCancel" style="flex:1">Cancel</button>
+        <button type="submit" class="submit" style="flex:1">Confirm Settlement</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <nav id="tabbar" aria-label="Quick actions">
   <button type="button" data-act="home"><span>🏠</span>Home</button>
+  <button type="button" data-act="utang"><span>🤝</span>Utang</button>
   <button type="button" data-act="gcash"><span>🔗</span>Wallets</button>
   <button type="button" data-act="rewards"><span>🏆</span>Rewards</button>
   <button type="button" data-act="profile"><span>👤</span>Profile</button>
-  <button type="button" data-act="logout" class="danger"><span>↪</span>Log out</button>
 </nav>
 
 <div id="onb"><div class="onb-card" id="onbCard"></div></div>
@@ -1169,6 +1367,7 @@
 <script src="app-config.js"></script>
 <script src="cloud.js"></script>
 <script src="gamification.js"></script>
+<script src="peer-ledger.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1241,6 +1440,9 @@
     }
     if (window.GamificationEngine) {
       s.gamification = GamificationEngine.normalizeGamificationState(s.gamification);
+    }
+    if (window.PeerLedger) {
+      PeerLedger.normalizeState(s);
     }
     if (!Array.isArray(s.txns)) s.txns = [];
     s.txns.forEach(function(t){
@@ -1543,6 +1745,9 @@
 
     // In-app notification warning banners
     renderNotificationBanners();
+
+    // Render Utang / Pa-Suyo tracker
+    renderUtang();
   }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
 
@@ -2314,7 +2519,7 @@
     p.type = show ? "text" : "password"; this.textContent = show ? "Hide" : "Show";
   });
   el("#avatarBtn").addEventListener("click", function(e){ e.stopPropagation(); el("#menuPop").classList.toggle("show"); });
-  document.addEventListener("click", function(){ el("#menuPop").classList.remove("show"); });
+document.addEventListener("click", function(){ el("#menuPop").classList.remove("show"); });
   el("#menuPop").addEventListener("click", function(e){ e.stopPropagation(); });
   el("#menuGoals").addEventListener("click", function(){ el("#menuPop").classList.remove("show"); openGoals(); });
   el("#menuLogout").addEventListener("click", logout);
@@ -2322,12 +2527,307 @@
   el("#limitsBtn2").addEventListener("click", openGoals);
   el("#logoutBtn2").addEventListener("click", logout);
 
+  // ---------- Peer Ledger (Utang / Pa-Suyo Tracker) UI ----------
+  var utangAddType = "UTANG_GIVEN";
+  var activeSettleEntryId = null;
+
+  function renderUtang() {
+    if (!window.PeerLedger || !state) return;
+    PeerLedger.normalizeState(state);
+
+    // Global summary metrics
+    var curTotals = PeerLedger.getGlobalTotalsPerCurrency(state);
+    var primaryCur = state.currency || "PHP";
+    var primaryTotals = curTotals[primaryCur] || { totalOwedToYou: 0, totalYouOwe: 0 };
+
+    var owedToYouEl = el("#utangOwedToYou");
+    var youOweEl = el("#utangYouOwe");
+    if (owedToYouEl) owedToYouEl.textContent = (CURRENCIES[primaryCur] || "₱") + primaryTotals.totalOwedToYou.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (youOweEl) youOweEl.textContent = (CURRENCIES[primaryCur] || "₱") + primaryTotals.totalYouOwe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Grouped list by counterparty
+    var listContainer = el("#utangList");
+    if (!listContainer) return;
+    listContainer.innerHTML = "";
+
+    var summaryMap = PeerLedger.getSummaryByCounterparty(state);
+    var activeEntries = PeerLedger.getFilteredEntries(state);
+
+    if (!activeEntries.length) {
+      listContainer.innerHTML = '<div class="empty"><div class="big">🤝</div>No utang records yet.<br>Track loans, favors, and shared bills.</div>';
+      return;
+    }
+
+    // Group entries by counterparty
+    var groupedByCp = {};
+    activeEntries.forEach(function (e) {
+      if (!groupedByCp[e.counterpartyName]) groupedByCp[e.counterpartyName] = [];
+      groupedByCp[e.counterpartyName].push(e);
+    });
+
+    Object.keys(groupedByCp).forEach(function (cpName) {
+      var entries = groupedByCp[cpName];
+      var curMap = summaryMap.get(cpName);
+
+      // Render primary currency net balance for counterparty header
+      var netText = "";
+      var balClass = "zero";
+      if (curMap) {
+        var parts = [];
+        curMap.forEach(function (data, cCode) {
+          var symStr = CURRENCIES[cCode] || cCode + " ";
+          if (data.netBalance > 0) {
+            parts.push("+" + symStr + data.netBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            if (cCode === primaryCur) balClass = "pos";
+          } else if (data.netBalance < 0) {
+            parts.push("−" + symStr + Math.abs(data.netBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            if (cCode === primaryCur) balClass = "neg";
+          } else {
+            parts.push(symStr + "0.00");
+          }
+        });
+        netText = parts.join(" | ");
+      }
+
+      var card = document.createElement("div");
+      card.className = "counterparty-card";
+
+      var headHtml =
+        '<div class="counterparty-head">' +
+          '<div class="counterparty-name"><span>👤</span>' + esc(cpName) + ' <span style="font-size:12px; font-weight:600; color:var(--muted)">(' + entries.length + ')</span></div>' +
+          '<div class="counterparty-bal ' + balClass + '">' + esc(netText) + '</div>' +
+        '</div>';
+
+      var entriesHtml = '<div class="utang-entries-body">';
+      entries.forEach(function (entry) {
+        var remaining = Math.max(0, entry.amount - entry.settledAmount);
+        var entrySym = CURRENCIES[entry.currency] || entry.currency + " ";
+
+        var typeLabel = "UTANG GIVEN";
+        var typeClass = "given";
+        if (entry.type === "UTANG_TAKEN") { typeLabel = "UTANG TAKEN"; typeClass = "taken"; }
+        else if (entry.type === "PA_SUYO") { typeLabel = "PA-SUYO"; typeClass = "suyo"; }
+
+        var statusLabel = entry.status;
+        var statusClass = entry.status.toLowerCase().replace("_settled", "").replace("partially", "partially");
+
+        var pct = entry.amount > 0 ? Math.min(100, Math.round((entry.settledAmount / entry.amount) * 100)) : 0;
+        var dueDateStr = entry.dueDate ? new Date(entry.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
+
+        entriesHtml +=
+          '<div class="utang-entry-item">' +
+            '<div class="utang-entry-top">' +
+              '<div style="display:flex; align-items:center; gap:6px;">' +
+                '<span class="utang-type-chip ' + typeClass + '">' + typeLabel + '</span>' +
+                '<span class="utang-status-chip ' + statusClass + '">' + statusLabel + '</span>' +
+              '</div>' +
+              '<div style="font-weight:800; font-size:14.5px;" class="num">' + entrySym + entry.amount.toFixed(2) + '</div>' +
+            '</div>' +
+            (entry.description ? '<div style="font-size:13px; font-weight:600; color:var(--ink);">' + esc(entry.description) + '</div>' : '') +
+            '<div style="font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center;">' +
+              '<span>Settled: <b>' + entrySym + entry.settledAmount.toFixed(2) + '</b> (' + pct + '%)</span>' +
+              (dueDateStr ? '<span>Due: <b>' + dueDateStr + '</b></span>' : '') +
+            '</div>' +
+            '<div class="utang-progress-bar"><span style="width:' + pct + '%"></span></div>' +
+            '<div class="utang-entry-actions">' +
+              (entry.status !== "SETTLED" ? '<button type="button" class="utang-btn-settle" data-settleid="' + entry.id + '">💳 Settle</button>' : '') +
+              '<button type="button" class="utang-btn-del" data-delid="' + entry.id + '">Delete</button>' +
+            '</div>' +
+          '</div>';
+      });
+      entriesHtml += '</div>';
+
+      card.innerHTML = headHtml + entriesHtml;
+
+      card.querySelectorAll(".utang-btn-settle").forEach(function (btn) {
+        btn.addEventListener("click", function (evt) {
+          evt.stopPropagation();
+          openUtangSettle(btn.getAttribute("data-settleid"));
+        });
+      });
+      card.querySelectorAll(".utang-btn-del").forEach(function (btn) {
+        btn.addEventListener("click", function (evt) {
+          evt.stopPropagation();
+          deleteUtangEntry(btn.getAttribute("data-delid"));
+        });
+      });
+
+      listContainer.appendChild(card);
+    });
+  }
+
+  function setUtangType(t) {
+    utangAddType = t;
+    var btnG = el("#uBtnGiven"), btnT = el("#uBtnTaken"), btnS = el("#uBtnSuyo");
+    if (btnG) btnG.className = t === "UTANG_GIVEN" ? "on-given" : "";
+    if (btnT) btnT.className = t === "UTANG_TAKEN" ? "on-taken" : "";
+    if (btnS) btnS.className = t === "PA_SUYO" ? "on-suyo" : "";
+  }
+
+  function openUtangAdd() {
+    setUtangType("UTANG_GIVEN");
+    if (el("#uCounterparty")) el("#uCounterparty").value = "";
+    if (el("#uAmount")) el("#uAmount").value = "";
+    if (el("#uDesc")) el("#uDesc").value = "";
+    if (el("#uDueDate")) el("#uDueDate").value = "";
+    if (el("#uCurrency")) el("#uCurrency").value = state.currency || "PHP";
+    if (el("#uAmtSym")) el("#uAmtSym").textContent = CURRENCIES[state.currency || "PHP"] || "₱";
+    el("#utangAddScrim").classList.add("show");
+  }
+  function closeUtangAdd() { el("#utangAddScrim").classList.remove("show"); }
+
+  function saveUtangAdd(e) {
+    e.preventDefault();
+    var cp = el("#uCounterparty").value.trim();
+    var amt = parseFloat(el("#uAmount").value);
+    var cur = el("#uCurrency").value;
+    var desc = el("#uDesc").value.trim();
+    var due = el("#uDueDate").value;
+
+    if (!cp) { toast("Please enter a classmate/friend name"); el("#uCounterparty").focus(); return; }
+    if (!(amt > 0)) { toast("Enter an amount greater than 0"); el("#uAmount").focus(); return; }
+
+    PeerLedger.addEntry(state, {
+      type: utangAddType,
+      counterpartyName: cp,
+      amount: amt,
+      currency: cur,
+      description: desc,
+      dueDate: due || null
+    });
+
+    save(); render(); closeUtangAdd();
+    toast("Added Utang / Pa-Suyo record ✓");
+  }
+
+  function openUtangSettle(entryId) {
+    activeSettleEntryId = entryId;
+    var entry = null;
+    for (var i = 0; i < state.peerLedger.length; i++) {
+      if (state.peerLedger[i].id === entryId) { entry = state.peerLedger[i]; break; }
+    }
+    if (!entry) return;
+
+    var remaining = Math.max(0, entry.amount - entry.settledAmount);
+    var eSym = CURRENCIES[entry.currency] || entry.currency + " ";
+
+    if (el("#utangSettleSub")) {
+      el("#utangSettleSub").textContent = "Settling " + entry.counterpartyName + " (" + entry.type + " — " + eSym + entry.amount.toFixed(2) + ")";
+    }
+    if (el("#uSettleSym")) el("#uSettleSym").textContent = eSym;
+    if (el("#uSettleAmount")) {
+      el("#uSettleAmount").value = remaining.toFixed(2);
+      el("#uSettleAmount").max = remaining.toFixed(2);
+    }
+
+    updateSettleHint(remaining, remaining, eSym);
+
+    el("#utangSettleScrim").classList.add("show");
+  }
+  function closeUtangSettle() { el("#utangSettleScrim").classList.remove("show"); activeSettleEntryId = null; }
+
+  function updateSettleHint(remaining, payAmt, eSym) {
+    var hintEl = el("#uSettleHint");
+    if (!hintEl) return;
+    var leftAfter = Math.max(0, remaining - payAmt);
+    if (leftAfter === 0) {
+      hintEl.textContent = "✓ Will fully settle this record.";
+    } else {
+      hintEl.textContent = "Remaining balance after payment: " + eSym + leftAfter.toFixed(2);
+    }
+  }
+
+  function saveUtangSettle(e) {
+    e.preventDefault();
+    if (!activeSettleEntryId) return;
+
+    var payAmt = parseFloat(el("#uSettleAmount").value);
+    var logTxn = el("#uSettleLogTxn") ? el("#uSettleLogTxn").checked : true;
+
+    try {
+      var res = PeerLedger.settleEntry(state, activeSettleEntryId, payAmt, logTxn);
+      save(); render(); closeUtangSettle();
+      toast("Settlement recorded ✓" + (res.createdTxn ? " (Added to spending history)" : ""));
+    } catch (err) {
+      toast(err.message || "Failed to record settlement");
+    }
+  }
+
+  function deleteUtangEntry(entryId) {
+    var entry = null;
+    for (var i = 0; i < state.peerLedger.length; i++) {
+      if (state.peerLedger[i].id === entryId) { entry = state.peerLedger[i]; break; }
+    }
+    if (!entry) return;
+
+    if (entry.status !== "SETTLED") {
+      if (!confirm("This record is UNSETTLED (" + entry.counterpartyName + "). Delete anyway?")) return;
+    }
+
+    PeerLedger.deleteEntry(state, entryId);
+    save(); render();
+    toast("Utang record deleted");
+  }
+
+  // Event bindings for Utang UI
+  if (el("#openUtangAddBtn")) el("#openUtangAddBtn").addEventListener("click", openUtangAdd);
+  if (el("#utangAddClose")) el("#utangAddClose").addEventListener("click", closeUtangAdd);
+  if (el("#utangAddCancel")) el("#utangAddCancel").addEventListener("click", closeUtangAdd);
+  if (el("#utangAddForm")) el("#utangAddForm").addEventListener("submit", saveUtangAdd);
+
+  if (el("#uBtnGiven")) el("#uBtnGiven").addEventListener("click", function () { setUtangType("UTANG_GIVEN"); });
+  if (el("#uBtnTaken")) el("#uBtnTaken").addEventListener("click", function () { setUtangType("UTANG_TAKEN"); });
+  if (el("#uBtnSuyo")) el("#uBtnSuyo").addEventListener("click", function () { setUtangType("PA_SUYO"); });
+
+  if (el("#uCurrency")) {
+    el("#uCurrency").addEventListener("change", function () {
+      var c = this.value;
+      if (el("#uAmtSym")) el("#uAmtSym").textContent = CURRENCIES[c] || c + " ";
+    });
+  }
+
+  // Preset chips handler
+  document.querySelectorAll(".preset-chip").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var preset = this.getAttribute("data-preset");
+      if (el("#uDesc")) el("#uDesc").value = preset;
+    });
+  });
+
+  if (el("#utangSettleClose")) el("#utangSettleClose").addEventListener("click", closeUtangSettle);
+  if (el("#utangSettleCancel")) el("#utangSettleCancel").addEventListener("click", closeUtangSettle);
+  if (el("#utangSettleForm")) el("#utangSettleForm").addEventListener("submit", saveUtangSettle);
+
+  if (el("#uSettleAmount")) {
+    el("#uSettleAmount").addEventListener("input", function () {
+      if (!activeSettleEntryId) return;
+      var entry = null;
+      for (var i = 0; i < state.peerLedger.length; i++) {
+        if (state.peerLedger[i].id === activeSettleEntryId) { entry = state.peerLedger[i]; break; }
+      }
+      if (!entry) return;
+      var remaining = Math.max(0, entry.amount - entry.settledAmount);
+      var payAmt = parseFloat(this.value) || 0;
+      var eSym = CURRENCIES[entry.currency] || entry.currency + " ";
+      updateSettleHint(remaining, payAmt, eSym);
+    });
+  }
+
+  // tabbar quick-actions
+  el("#tabbar").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    var act = b.getAttribute("data-act");
+    if (act === "utang") {
+      var sec = document.getElementById("utangSection");
+      if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+
   // Connect GCash (opens the native setup; friendly message on the web preview)
   function openGcashSetup(){
     if (window.GcashSetup && window.GcashSetup.open) window.GcashSetup.open();
     else toast("GCash auto-detection runs in the installed Android app.");
   }
-  el("#connectGcashBtn").addEventListener("click", openGcashSetup);
 
   // Bottom quick-action bar
   el("#tabbar").addEventListener("click", function(e){
