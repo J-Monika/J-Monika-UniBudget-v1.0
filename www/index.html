@@ -80,17 +80,26 @@
   }
   .num { font-variant-numeric: tabular-nums; }
 
-  /* ---------- Header ---------- */
+  /* ---------- Header (Fixed Top Zone 1) ---------- */
   header.bar {
-    position: sticky; top: 0; z-index: 30; width: 100%; max-width: 100vw;
-    background: linear-gradient(180deg, #524af0, var(--accent));
-    color: #fff;
-    box-shadow: 0 6px 20px rgba(79,70,229,.28);
+    position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important;
+    z-index: 150 !important; width: 100% !important; max-width: 100vw !important;
+    height: 74px !important; background: #101D3A !important; color: #fff;
+    box-shadow: 0 4px 20px rgba(16,29,58,.4) !important;
   }
   .bar-inner {
-    max-width: 1180px; margin: 0 auto; padding: 16px 24px;
-    display: flex; align-items: center; gap: 14px;
+    max-width: 1180px; margin: 0 auto; padding: 10px 20px;
+    display: flex; align-items: center; justify-content: space-between; height: 100%;
   }
+  .profile-group { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .profile-avatar-img {
+    width: 44px; height: 44px; border-radius: 50%; background: #3b82f6;
+    color: #fff; font-weight: 800; font-size: 18px; display: grid; place-items: center;
+    border: 2px solid rgba(255,255,255,0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .profile-labels { display: flex; flex-direction: column; }
+  .profile-name { font-weight: 800; font-size: 15px; color: #ffffff; line-height: 1.1; letter-spacing: -.01em; }
+  .profile-sub { font-size: 11.5px; color: #94a3b8; font-weight: 600; }
   .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
   .brand .logo {
     width: 38px; height: 38px; border-radius: 11px;
@@ -142,8 +151,12 @@
     .avatar { width: 36px; height: 36px; }
   }
 
-  /* ---------- Layout ---------- */
-  main { width: 100%; max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; box-sizing: border-box; }
+  /* ---------- Layout (Scrollable Zone 2) ---------- */
+  main {
+    width: 100%; max-width: 1180px; margin: 0 auto;
+    padding-top: 88px !important; padding-bottom: 96px !important;
+    box-sizing: border-box; flex: 1;
+  }
   .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; width: 100%; }
   .grid > * { min-width: 0; }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
@@ -1028,10 +1041,12 @@
 <div id="app">
 <header class="bar">
   <div class="bar-inner">
-    <div class="brand">
-      <span class="logo">🎓</span>
-      <span>UniBudget</span>
-      <span class="ai-pill">AI ✨</span>
+    <div class="profile-group" id="headerProfileGroup" title="Account Settings">
+      <div class="profile-avatar-img" id="headerProfileAvatar">U</div>
+      <div class="profile-labels">
+        <span class="profile-name" id="headerProfileName">UniBudget</span>
+        <span class="profile-sub">Profile</span>
+      </div>
     </div>
     <div class="bar-actions">
       <select class="cur" id="currency" aria-label="Currency">
@@ -1041,11 +1056,9 @@
         <option value="GBP">£ GBP</option>
         <option value="JPY">¥ JPY</option>
       </select>
-      <button class="h-btn" id="syncBtn"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Synced</span></button>
-      <button class="h-btn solid" id="goalsBtn">🎯 Goals</button>
-      <button class="h-btn rewards-top-btn" id="rewardsTopBtn">🏆 Rewards</button>
+      <button class="h-btn rewards-top-btn" id="rewardsTopBtn" title="Rewards & Achievements">🏆 Rewards</button>
       <div class="user-menu">
-        <button class="avatar" id="avatarBtn" aria-label="Account menu">U</button>
+        <button class="avatar" id="avatarBtn" aria-label="Account menu" style="display:none;">U</button>
         <div class="menu-pop" id="menuPop">
           <div class="menu-head">
             <div class="n" id="menuName">User</div>
@@ -3687,6 +3700,12 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
   // UI Redesign Event Bindings
   if (el("#rewardsTopBtn")) el("#rewardsTopBtn").addEventListener("click", openAchievements);
+  if (el("#headerProfileGroup")) {
+    el("#headerProfileGroup").addEventListener("click", function() {
+      var acct = el("#acctSection");
+      if (acct) acct.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   if (el("#fabAddBtn")) {
     el("#fabAddBtn").addEventListener("click", function() {
       var addForm = el("#addForm");
