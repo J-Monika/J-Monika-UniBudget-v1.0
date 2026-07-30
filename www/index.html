@@ -739,6 +739,46 @@
     white-space: nowrap; cursor: pointer; font-family: inherit; transition: background .12s, border-color .12s;
   }
   .preset-chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+
+  /* ===== RECENT HISTORY SECTION ===== */
+  .utang-history-wrap {
+    margin: 0 20px 20px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+    overflow: hidden;
+  }
+  .utang-history-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; cursor: pointer;
+    background: var(--page); border-bottom: 1px solid var(--line);
+    transition: background .15s;
+  }
+  .utang-history-head:hover { background: var(--track); }
+  .utang-history-title {
+    font-weight: 800; font-size: 13px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .utang-history-chevron {
+    font-size: 12px; color: var(--muted); transition: transform .2s;
+  }
+  .utang-history-chevron.open { transform: rotate(180deg); }
+  .utang-history-body { display: none; flex-direction: column; gap: 8px; padding: 10px 14px 14px; }
+  .utang-history-body.open { display: flex; }
+  .utang-history-item {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 10px 12px; border-radius: 12px;
+    background: var(--page); border: 1px solid var(--line);
+    opacity: .85;
+  }
+  .utang-history-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .utang-history-name { font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .utang-history-amt { font-weight: 800; font-size: 14px; color: var(--income); }
+  .utang-history-desc { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .utang-history-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .utang-history-expiry { color: var(--warn); font-weight: 700; }
+  .utang-history-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 14px 0; }
 </style>
 </head>
 <body>
@@ -936,6 +976,15 @@
         </div>
 
         <div class="utang-list" id="utangList"></div>
+
+        <!-- Recent History (settled entries, auto-purges after 30 days) -->
+        <div id="utangHistoryWrap" class="utang-history-wrap" style="display:none;">
+          <div class="utang-history-head" id="utangHistoryToggle" role="button" aria-expanded="false">
+            <span class="utang-history-title">📋 Recent History</span>
+            <span class="utang-history-chevron" id="utangHistoryChevron">▼</span>
+          </div>
+          <div class="utang-history-body" id="utangHistoryBody"></div>
+        </div>
       </section>
     </div>
   </div>
@@ -1453,6 +1502,17 @@
     });
     return s;
   }
+  function normalizeNotifications(notif) {
+    if (!notif || typeof notif !== "object") notif = {};
+    if (typeof notif.enabled !== "boolean") notif.enabled = true;
+    if (!Array.isArray(notif.thresholds) || !notif.thresholds.length) {
+      notif.thresholds = JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS));
+    }
+    if (!notif.triggered_alerts || typeof notif.triggered_alerts !== "object") {
+      notif.triggered_alerts = {};
+    }
+    return notif;
+  }
   function loadState() {
     try {
       var raw = localStorage.getItem(dataKey(currentUser.email));
@@ -1466,11 +1526,11 @@
     localStorage.setItem(dataKey(currentUser.email), JSON.stringify(state));
     setDirty(false);
     // Real-time threshold check on save
-    checkNotifications();
+    try { checkNotifications(); } catch(e) { console.error("[save] checkNotifications failed:", e); }
     // Per-row cloud sync with offline outbox (no-op in device mode)
-    if (window.Cloud && Cloud.pushState) Cloud.pushState(state);
+    try { if (window.Cloud && Cloud.pushState) Cloud.pushState(state); } catch(e) { console.error("[save] cloud sync failed:", e); }
     // Celebrate any newly-earned badges / level-ups
-    if (typeof checkProgress === "function") checkProgress();
+    try { if (typeof checkProgress === "function") checkProgress(); } catch(e) { console.error("[save] checkProgress failed:", e); }
   }
   function setDirty(v){
     dirty = v;
@@ -2495,6 +2555,7 @@
     el("#currency").value = state.currency;
     setType("expense");
     injectMascots();
+    if (typeof purgeOldSettledEntries === "function") purgeOldSettledEntries();
     render();
     progressBaseline();               // baseline so we don't celebrate on load
     if (!state.onboarded) setTimeout(showOnboarding, 350);
@@ -2551,11 +2612,13 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     listContainer.innerHTML = "";
 
     var summaryMap = PeerLedger.getSummaryByCounterparty(state);
-    var activeEntries = PeerLedger.getFilteredEntries(state);
+    // Active list: only UNSETTLED and PARTIALLY_SETTLED entries
+    var activeEntries = PeerLedger.getFilteredEntries(state).filter(function(e) {
+      return e.status !== "SETTLED";
+    });
 
     if (!activeEntries.length) {
-      listContainer.innerHTML = '<div class="empty"><div class="big">🤝</div>No utang records yet.<br>Track loans, favors, and shared bills.</div>';
-      return;
+      listContainer.innerHTML = '<div class="empty"><div class="big">🤝</div>No outstanding utang records.<br>All clear! Check Recent History below for settled entries.</div>';
     }
 
     // Group entries by counterparty
@@ -2654,6 +2717,69 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
       listContainer.appendChild(card);
     });
+
+    // Render the history panel alongside active entries
+    renderUtangHistory();
+  }
+
+  // ---- Auto-purge settled entries older than 30 days ----
+  function purgeOldSettledEntries() {
+    if (!state || !Array.isArray(state.peerLedger)) return;
+    var THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    var cutoff = Date.now() - THIRTY_DAYS;
+    state.peerLedger.forEach(function(entry) {
+      if (!entry.deleted && entry.status === "SETTLED" && entry.updatedAt < cutoff) {
+        entry.deleted = true;
+        entry.updatedAt = Date.now();
+      }
+    });
+  }
+
+  // ---- Render the collapsible Recent History panel ----
+  function renderUtangHistory() {
+    var wrap = el("#utangHistoryWrap");
+    var body = el("#utangHistoryBody");
+    if (!wrap || !body || !window.PeerLedger || !state) return;
+
+    var THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    var cutoff = Date.now() - THIRTY_DAYS;
+
+    // Settled entries not yet purged (within 30 days)
+    var historyEntries = (state.peerLedger || []).filter(function(e) {
+      return !e.deleted && e.status === "SETTLED" && e.updatedAt >= cutoff;
+    }).sort(function(a, b) { return b.updatedAt - a.updatedAt; }); // newest first
+
+    if (!historyEntries.length) {
+      wrap.style.display = "none";
+      return;
+    }
+
+    wrap.style.display = "block";
+    body.innerHTML = "";
+
+    historyEntries.forEach(function(entry) {
+      var entrySym = CURRENCIES[entry.currency] || entry.currency + " ";
+      var typeLabel = entry.type === "UTANG_TAKEN" ? "UTANG TAKEN" : (entry.type === "PA_SUYO" ? "PA-SUYO" : "UTANG GIVEN");
+      var typeClass = entry.type === "UTANG_TAKEN" ? "taken" : (entry.type === "PA_SUYO" ? "suyo" : "given");
+
+      var settledDate = new Date(entry.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      var daysLeft = Math.max(1, Math.ceil((entry.updatedAt + THIRTY_DAYS - Date.now()) / 86400000));
+      var expiryText = daysLeft === 1 ? "Expires tomorrow" : "Expires in " + daysLeft + " days";
+
+      var item = document.createElement("div");
+      item.className = "utang-history-item";
+      item.innerHTML =
+        '<div class="utang-history-row">' +
+          '<span class="utang-history-name"><span class="utang-type-chip ' + typeClass + '" style="font-size:10px;">' + typeLabel + '</span>' + esc(entry.counterpartyName) + '</span>' +
+          '<span class="utang-history-amt">' + entrySym + entry.amount.toFixed(2) + '</span>' +
+        '</div>' +
+        (entry.description ? '<div class="utang-history-desc">' + esc(entry.description) + '</div>' : '') +
+        '<div class="utang-history-meta">' +
+          '<span>Settled on ' + settledDate + '</span>' +
+          '<span class="utang-history-expiry">🕑 ' + expiryText + '</span>' +
+        '</div>';
+      body.appendChild(item);
+    });
   }
 
   function setUtangType(t) {
@@ -2687,17 +2813,23 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     if (!cp) { toast("Please enter a classmate/friend name"); el("#uCounterparty").focus(); return; }
     if (!(amt > 0)) { toast("Enter an amount greater than 0"); el("#uAmount").focus(); return; }
 
-    PeerLedger.addEntry(state, {
-      type: utangAddType,
-      counterpartyName: cp,
-      amount: amt,
-      currency: cur,
-      description: desc,
-      dueDate: due || null
-    });
+    try {
+      PeerLedger.addEntry(state, {
+        type: utangAddType,
+        counterpartyName: cp,
+        amount: amt,
+        currency: cur,
+        description: desc,
+        dueDate: due || null
+      });
 
-    save(); render(); closeUtangAdd();
-    toast("Added Utang / Pa-Suyo record ✓");
+      save(); render();
+      toast("🤝 Utang Saved!");
+      setTimeout(closeUtangAdd, 900);
+    } catch (err) {
+      console.error("[saveUtangAdd] PeerLedger.addEntry failed:", err);
+      toast("❌ Save failed: " + (err.message || "Unknown error"));
+    }
   }
 
   function openUtangSettle(entryId) {
@@ -2746,8 +2878,13 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
     try {
       var res = PeerLedger.settleEntry(state, activeSettleEntryId, payAmt, logTxn);
+      // Auto-purge stale history entries, then save and re-render
+      purgeOldSettledEntries();
       save(); render(); closeUtangSettle();
-      toast("Settlement recorded ✓" + (res.createdTxn ? " (Added to spending history)" : ""));
+      var fullySettled = res.entry && res.entry.status === "SETTLED";
+      toast(fullySettled
+        ? "✅ Fully settled! Record moved to Recent History."
+        : "💳 Partial settlement recorded" + (res.createdTxn ? " · logged to history" : "") + " ✓");
     } catch (err) {
       toast(err.message || "Failed to record settlement");
     }
@@ -2797,6 +2934,17 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
   if (el("#utangSettleClose")) el("#utangSettleClose").addEventListener("click", closeUtangSettle);
   if (el("#utangSettleCancel")) el("#utangSettleCancel").addEventListener("click", closeUtangSettle);
   if (el("#utangSettleForm")) el("#utangSettleForm").addEventListener("submit", saveUtangSettle);
+
+  // History panel toggle
+  if (el("#utangHistoryToggle")) {
+    el("#utangHistoryToggle").addEventListener("click", function() {
+      var body = el("#utangHistoryBody");
+      var chevron = el("#utangHistoryChevron");
+      var isOpen = body.classList.toggle("open");
+      if (chevron) chevron.classList.toggle("open", isOpen);
+      el("#utangHistoryToggle").setAttribute("aria-expanded", String(isOpen));
+    });
+  }
 
   if (el("#uSettleAmount")) {
     el("#uSettleAmount").addEventListener("input", function () {
