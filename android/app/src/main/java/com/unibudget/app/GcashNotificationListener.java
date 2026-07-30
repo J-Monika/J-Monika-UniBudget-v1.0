@@ -25,11 +25,16 @@ public class GcashNotificationListener extends NotificationListenerService {
         return false;
     }
 
+    private static final java.util.Set<String> processedNotifKeys = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         if (sbn == null) return;
         // Strict package isolation: only ever read notifications from known wallets.
         if (!isWalletPackage(sbn.getPackageName())) return;
+
+        String key = sbn.getKey();
+        if (key != null && processedNotifKeys.contains(key)) return;
 
         Notification n = sbn.getNotification();
         if (n == null || n.extras == null) return;
@@ -45,13 +50,26 @@ public class GcashNotificationListener extends NotificationListenerService {
         combined = combined.trim();
         if (combined.isEmpty()) return;
 
+        if (key != null) {
+            processedNotifKeys.add(key);
+            // Limit memory cache size
+            if (processedNotifKeys.size() > 200) {
+                processedNotifKeys.clear();
+                processedNotifKeys.add(key);
+            }
+        }
+
         GcashCaptureStore.handle(getApplicationContext(), combined);
     }
 
     private static String charSeq(CharSequence cs) { return cs == null ? "" : cs.toString(); }
 
     @Override
-    public void onNotificationRemoved(StatusBarNotification sbn) { /* not needed */ }
+    public void onNotificationRemoved(StatusBarNotification sbn) {
+        if (sbn != null && sbn.getKey() != null) {
+            processedNotifKeys.remove(sbn.getKey());
+        }
+    }
 
     /**
      * When the system re-binds us (after boot, low-memory kill, or OEM deep-sleep),

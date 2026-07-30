@@ -47,8 +47,8 @@ public class GcashCaptureStore {
     private static final Pattern REF =
             Pattern.compile("ref(?:erence)?\\.?\\s*(?:no\\.?)?\\s*[:#]?\\s*([0-9]{6,})", Pattern.CASE_INSENSITIVE);
 
-    private static final String KEY_SEEN = "seen_refs";
-    private static final long SEEN_WINDOW_MS = 15 * 60 * 1000; // 15 min
+    private static final long SEEN_WINDOW_MS = 24 * 60 * 60 * 1000L; // 24 hours
+    private static final long FUZZY_WINDOW_MS = 3 * 60 * 1000L; // 3 min
 
     /** Returns true if the text looks like a GCash transaction alert. */
     public static boolean looksLikeGcash(String text) {
@@ -60,10 +60,12 @@ public class GcashCaptureStore {
     public static void handle(Context ctx, String text) {
         if (!looksLikeGcash(text)) return;
 
-        // Idempotency: dedupe by GCash Ref no. (falls back to amount+direction).
-        String key = dedupKey(text);
-        if (alreadySeen(ctx, key)) return;   // a notification + its SMS collapse to one
-        markSeen(ctx, key);
+        // Idempotency: dedupe by GCash Ref no. + fuzzy amount/direction key.
+        String refKey = dedupKey(text);
+        String fKey = fuzzyKey(text);
+
+        if (alreadySeen(ctx, refKey, fKey)) return;   // a notification + its SMS collapse to one
+        markSeen(ctx, refKey, fKey);
 
         GcashWatcherPlugin plugin = livePlugin;
         if (plugin != null) {
@@ -77,29 +79,42 @@ public class GcashCaptureStore {
     private static String dedupKey(String text) {
         Matcher r = REF.matcher(text);
         if (r.find()) return "ref:" + r.group(1);
+        return null;
+    }
+
+    private static String fuzzyKey(String text) {
         Matcher a = AMOUNT.matcher(text);
-        String amt = a.find() ? a.group(1) : "?";
+        String amt = a.find() ? a.group(1).replace(",", "") : "?";
         boolean income = Pattern.compile("received|credited|cash\\s?in|refund", Pattern.CASE_INSENSITIVE)
                 .matcher(text).find();
         return "amt:" + amt + ":" + (income ? "in" : "out");
     }
 
-    private static synchronized boolean alreadySeen(Context ctx, String key) {
+    private static synchronized boolean alreadySeen(Context ctx, String refKey, String fKey) {
         try {
             JSONObject seen = new JSONObject(
                     ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_SEEN, "{}"));
-            if (!seen.has(key)) return false;
-            return (System.currentTimeMillis() - seen.optLong(key, 0)) < SEEN_WINDOW_MS;
+            long now = System.currentTimeMillis();
+
+            if (refKey != null && seen.has(refKey)) {
+                if ((now - seen.optLong(refKey, 0)) < SEEN_WINDOW_MS) return true;
+            }
+            if (fKey != null && seen.has(fKey)) {
+                if ((now - seen.optLong(fKey, 0)) < FUZZY_WINDOW_MS) return true;
+            }
+            return false;
         } catch (Exception e) { return false; }
     }
 
-    private static synchronized void markSeen(Context ctx, String key) {
+    private static synchronized void markSeen(Context ctx, String refKey, String fKey) {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         JSONObject seen;
         try { seen = new JSONObject(p.getString(KEY_SEEN, "{}")); } catch (Exception e) { seen = new JSONObject(); }
         long now = System.currentTimeMillis();
         try {
-            seen.put(key, now);
+            if (refKey != null) seen.put(refKey, now);
+            if (fKey != null) seen.put(fKey, now);
+
             // prune expired entries so the map can't grow unbounded
             JSONObject pruned = new JSONObject();
             java.util.Iterator<String> it = seen.keys();

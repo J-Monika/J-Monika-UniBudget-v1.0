@@ -12,7 +12,12 @@
   var GcashWatcher = Cap.registerPlugin("GcashWatcher");
   window.GcashWatcher = GcashWatcher;
 
+  var fedRecently = {};
   function feed(text) {
+    if (!text) return;
+    var now = Date.now();
+    if (fedRecently[text] && (now - fedRecently[text]) < 3000) return;
+    fedRecently[text] = now;
     if (window.UniBudget && window.UniBudget.isReady && window.UniBudget.isReady()) {
       window.UniBudget.ingestGcash(text);
     }

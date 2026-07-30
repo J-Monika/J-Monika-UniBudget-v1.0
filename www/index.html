@@ -2651,10 +2651,11 @@
     var low = t.toLowerCase();
     var wallet = detectWallet(low);
 
-    // amount: "PHP 500.00", "P500", "₱1,250.50"
-    var m = t.match(/(?:php|p|₱)\s?([0-9][0-9,]*\.?[0-9]{0,2})/i);
+    // amount: "PHP 500.00", "500.00 PHP", "P500", "₱1,250.50"
+    var m = t.match(/(?:php|p|₱)\s?([0-9][0-9,]*\.?[0-9]{0,2})|([0-9][0-9,]*\.?[0-9]{0,2})\s?(?:php|p|₱)/i);
     if (!m) return null;
-    var amount = parseFloat(m[1].replace(/,/g, ""));
+    var rawAmt = m[1] || m[2];
+    var amount = parseFloat(rawAmt.replace(/,/g, ""));
     if (!(amount > 0)) return null;
 
     // Reference / transaction number = idempotency key (GCash "Ref no.", ShopeePay "Txn ID")
@@ -2693,21 +2694,64 @@
     var parsed = parseGcash(text);
     if (!parsed) return { ok:false, reason:"unparsed" };
 
-    // Idempotency: a GCash Ref no. maps to a deterministic id, so the same
-    // transaction (even captured on two devices) collapses to one row.
-    var stableId = parsed.ref ? ("gcash-" + parsed.ref) : id();
-    var existing = state.txns.filter(function(x){ return x.id === stableId; })[0];
-    if (existing && !existing.deleted) return { ok:false, reason:"duplicate" };
-    // Fallback de-dup for ref-less messages: same amount+type within 90s
-    if (!parsed.ref){
-      var dup = state.txns.some(function(x){
-        return x.source === "gcash-auto" && !x.deleted && x.amount === parsed.amount &&
-               x.type === parsed.type && (now() - x.ts) < 90000;
-      });
-      if (dup) return { ok:false, reason:"duplicate" };
+    if (!state.txns) state.txns = [];
+    var currentTime = now();
+
+    // Case 1: Payload contains an explicit Ref No. (e.g. from SMS)
+    if (parsed.ref) {
+      var stableId = "gcash-" + parsed.ref;
+      var existingWithRef = state.txns.filter(function(x){ return x.id === stableId && !x.deleted; })[0];
+      if (existingWithRef) return { ok:false, reason:"duplicate" };
+
+      // Search for an un-referenced gcash-auto entry matching amount and type within 24 hours (86,400,000 ms)
+      var unrefMatch = state.txns.filter(function(x){
+        return x.source === "gcash-auto" &&
+          !x.deleted &&
+          !x.ref &&
+          x.amount === parsed.amount &&
+          x.type === parsed.type &&
+          Math.abs(currentTime - (x.ts || 0)) <= 86400000;
+      })[0];
+
+      if (unrefMatch) {
+        // Upgrade existing ref-less transaction in-place!
+        unrefMatch.id = stableId;
+        unrefMatch.ref = parsed.ref;
+        unrefMatch.updated_at = currentTime;
+        if (parsed.desc) unrefMatch.desc = parsed.desc;
+        save(); render();
+        return { ok:true, upgraded:true, txn:unrefMatch };
+      }
+
+      parsed.id = stableId; parsed.ts = currentTime; parsed.updated_at = currentTime;
+      parsed.deleted = false; parsed.source = "gcash-auto";
+      state.txns.push(parsed);
+      if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
+      save(); render();
+      var walletName = (parsed.desc || "").split(" · ")[0] || "wallet";
+      toast((parsed.type==="income"?"↓ Auto-added ":"↑ Auto-added ")+fmt(parsed.amount)+" · "+walletName);
+      return { ok:true, txn:parsed };
     }
-    parsed.id = stableId; parsed.ts = now(); parsed.updated_at = now();
-    parsed.deleted = false; parsed.source = "gcash-auto";
+
+    // Case 2: Payload does NOT contain a Ref No. (e.g. Push Notification)
+    // Check if any matching gcash-auto transaction (with or without ref) exists within 3 minutes (180,000 ms)
+    var recentDup = state.txns.some(function(x){
+      return x.source === "gcash-auto" &&
+        !x.deleted &&
+        x.amount === parsed.amount &&
+        x.type === parsed.type &&
+        Math.abs(currentTime - (x.ts || 0)) <= 180000;
+    });
+    if (recentDup) return { ok:false, reason:"duplicate" };
+
+    // Generate a deterministic temporary ID for ref-less transactions based on amount, type & timestamp bucket
+    var bucket = Math.floor(currentTime / 600000);
+    parsed.id = "gcash-draft-" + parsed.type + "-" + Math.round(parsed.amount * 100) + "-" + bucket;
+    var collisionCount = state.txns.filter(function(x){ return x.id && x.id.indexOf(parsed.id) === 0; }).length;
+    if (collisionCount > 0) parsed.id += "-" + collisionCount;
+
+    parsed.ts = currentTime; parsed.updated_at = currentTime;
+    parsed.deleted = false; parsed.source = "gcash-auto"; parsed.ref = null;
     state.txns.push(parsed);
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
     save(); render();

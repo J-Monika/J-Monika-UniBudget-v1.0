@@ -42,6 +42,10 @@ create table if not exists public.transactions (
 create index if not exists transactions_sync_idx
   on public.transactions (user_id, updated_at);
 
+-- Unique index ensuring idempotent upserts per user transaction ID
+create unique index if not exists transactions_user_id_id_unique_idx
+  on public.transactions (user_id, id);
+
 alter table public.transactions enable row level security;
 
 drop policy if exists "own txns - all" on public.transactions;
