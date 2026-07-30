@@ -28,17 +28,27 @@ create table if not exists public.budgets (
 --  id: 'gcash-<ref>' for GCash captures (deterministic → cross-device de-dup)
 --      or 'm-<random>' for manual entries.
 create table if not exists public.transactions (
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  id          text not null,
-  amount      numeric(14,2) not null,
-  type        text not null check (type in ('income','expense')),
-  category    text,
-  description text,
-  occurred_at timestamptz not null,
-  updated_at  timestamptz not null default now(),
-  deleted     boolean not null default false,
+  user_id              uuid not null references auth.users (id) on delete cascade,
+  id                   text not null,
+  amount               numeric(14,2) not null,
+  type                 text not null check (type in ('income','expense')),
+  category             text,
+  description          text,
+  occurred_at          timestamptz not null,
+  updated_at           timestamptz not null default now(),
+  deleted              boolean not null default false,
+  source_type          text default 'MANUAL',
+  source_app_or_sender text,
+  raw_message_text     text,
+  captured_at          timestamptz,
   primary key (user_id, id)
 );
+
+-- Idempotent column additions for existing deployments
+alter table public.transactions add column if not exists source_type text default 'MANUAL';
+alter table public.transactions add column if not exists source_app_or_sender text;
+alter table public.transactions add column if not exists raw_message_text text;
+alter table public.transactions add column if not exists captured_at timestamptz;
 create index if not exists transactions_sync_idx
   on public.transactions (user_id, updated_at);
 

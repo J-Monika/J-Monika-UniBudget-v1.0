@@ -42,6 +42,36 @@
     return msg || "Something went wrong. Please try again.";
   }
 
+  // ---- (de)serialization between local transaction objects and DB rows ----
+  function rowFromTxn(uid, t) {
+    return {
+      user_id: uid, id: t.id,
+      amount: t.amount, type: t.type,
+      category: t.cat || null, description: t.desc || null,
+      occurred_at: new Date(t.ts || Date.now()).toISOString(),
+      updated_at: new Date(t.updated_at || Date.now()).toISOString(),
+      deleted: !!t.deleted,
+      source_type: t.source_type || (t.source === "gcash-auto" ? "AUTOMATED_NOTIFICATION" : "MANUAL"),
+      source_app_or_sender: t.source_app_or_sender || (t.source === "gcash-auto" ? "GCash" : null),
+      raw_message_text: t.raw_message_text || null,
+      captured_at: t.captured_at ? new Date(t.captured_at).toISOString() : null
+    };
+  }
+  function txnFromRow(r) {
+    return {
+      id: r.id, amount: Number(r.amount), type: r.type,
+      cat: r.category || "Other", desc: r.description || "",
+      ts: new Date(r.occurred_at).getTime(),
+      updated_at: new Date(r.updated_at).getTime(),
+      deleted: !!r.deleted,
+      source: r.source_type && r.source_type.indexOf("AUTOMATED") === 0 ? "gcash-auto" : "manual",
+      source_type: r.source_type || "MANUAL",
+      source_app_or_sender: r.source_app_or_sender || null,
+      raw_message_text: r.raw_message_text || null,
+      captured_at: r.captured_at ? new Date(r.captured_at).getTime() : null
+    };
+  }
+
   // ---- (de)serialization between local peer ledger objects and DB rows ----
   function rowFromPeerLedger(uid, e) {
     return {

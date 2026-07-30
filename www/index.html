@@ -300,7 +300,56 @@
   .txn:hover .del { opacity: 1; }
   .txn .del:hover { color: var(--spent); background: rgba(220,38,38,.12); }
   .empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
-  .empty .big { font-size: 34px; margin-bottom: 8px; }
+  /* ---------- Visual Source Indicators & Inspector Modal ---------- */
+  .source-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10.5px; font-weight: 700; padding: 2px 7px;
+    border-radius: 6px; margin-left: 6px; vertical-align: middle;
+    letter-spacing: -.01em; flex-shrink: 0;
+  }
+  .source-badge.auto {
+    background: rgba(16, 185, 129, 0.15); color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .source-badge.manual {
+    background: rgba(148, 163, 184, 0.12); color: var(--muted);
+    border: 1px solid var(--line);
+  }
+
+  #inspectorScrim {
+    position: fixed; inset: 0; background: rgba(15,20,35,.6);
+    backdrop-filter: blur(4px); display: none; align-items: center;
+    justify-content: center; padding: 20px; z-index: 80;
+  }
+  #inspectorScrim.show { display: flex; }
+  #inspectorCard {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 20px; box-shadow: var(--shadow); width: 100%;
+    max-width: 440px; padding: 22px 24px; position: relative;
+    max-height: 88vh; overflow-y: auto; animation: inspectPop .2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes inspectPop { from { opacity: 0; transform: scale(.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .inspect-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .inspect-title { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; letter-spacing: -.02em; }
+  .inspect-close {
+    border: 0; background: var(--page); width: 34px; height: 34px;
+    border-radius: 10px; font-size: 16px; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .inspect-close:hover { color: var(--fg); background: var(--track); }
+  .inspect-meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+  .inspect-section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 14px; margin-bottom: 6px; }
+  .raw-msg-box {
+    background: var(--page); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; font-size: 12.5px; line-height: 1.5; color: var(--fg);
+    font-family: monospace, sans-serif; word-break: break-word; white-space: pre-wrap;
+    max-height: 160px; overflow-y: auto; margin-top: 6px;
+  }
+  .inspect-notice {
+    background: rgba(148, 163, 184, 0.1); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; font-size: 13px; color: var(--muted);
+    font-weight: 600; margin-top: 10px; display: flex; align-items: center; gap: 10px;
+  }
 
   /* ---------- Modal ---------- */
   .scrim {
@@ -1481,6 +1530,15 @@
       </div>
     </form>
   </div>
+<!-- ===== TRANSACTION INSPECTOR MODAL ===== -->
+<div id="inspectorScrim" role="dialog" aria-modal="true" aria-labelledby="inspectTitle">
+  <div id="inspectorCard">
+    <div class="inspect-head">
+      <div class="inspect-title" id="inspectTitle">⚡ Transaction Inspector</div>
+      <button type="button" class="inspect-close" id="inspectorCloseBtn" aria-label="Close inspector modal">✕</button>
+    </div>
+    <div id="inspectBody"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1869,16 +1927,24 @@
       var sorted = list.slice().sort(function(a,b){ return b.ts - a.ts; });
       sorted.forEach(function(t){
         var isInc = t.type === "income";
+        var isAuto = (t.source_type && t.source_type.indexOf("AUTOMATED") === 0) || t.source === "gcash-auto";
+        var badgeHtml = isAuto
+          ? '<span class="source-badge auto" title="Scanned automatically">⚡ Auto</span>'
+          : '<span class="source-badge manual" title="Manual entry">✏️ Manual</span>';
+
         var row = document.createElement("div");
         row.className = "txn";
+        row.style.cursor = "pointer";
         row.innerHTML =
           '<div class="ic '+(isInc?"inc":"exp")+'">'+(isInc?"↓":"↑")+'</div>'+
-          '<div class="desc"><div class="t">'+esc(t.desc)+'</div><div class="s">'+esc(t.cat)+'</div></div>'+
+          '<div class="desc"><div class="t">'+esc(t.desc)+badgeHtml+'</div><div class="s">'+esc(t.cat)+'</div></div>'+
           '<div class="amt num '+(isInc?"inc":"exp")+'">'+(isInc?"+":"−")+fmt(t.amount).replace("−","")+'</div>'+
           '<button class="del" title="Delete" aria-label="Delete transaction">'+
             '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'+
           '</button>';
-        row.querySelector(".del").addEventListener("click", function(){ removeTxn(t.id); });
+
+        row.addEventListener("click", function(){ openInspector(t.id); });
+        row.querySelector(".del").addEventListener("click", function(e){ e.stopPropagation(); removeTxn(t.id); });
         tx.appendChild(row);
       });
     }
@@ -1896,7 +1962,80 @@
     // Render Utang / Pa-Suyo tracker
     renderUtang();
   }
-  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+  // ---------- Transaction Inspector Modal ----------
+  function openInspector(tid) {
+    var t = state.txns.filter(function(x){ return x.id === tid && !x.deleted; })[0];
+    if (!t) return;
+
+    var scrim = el("#inspectorScrim");
+    var titleEl = el("#inspectTitle");
+    var bodyEl = el("#inspectBody");
+    if (!scrim || !titleEl || !bodyEl) return;
+
+    var isInc = t.type === "income";
+    var isAuto = (t.source_type && t.source_type.indexOf("AUTOMATED") === 0) || t.source === "gcash-auto";
+
+    titleEl.innerHTML = isAuto
+      ? '⚡ Transaction Inspector'
+      : '✏️ Transaction Details';
+
+    var dateStr = t.ts ? new Date(t.ts).toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }) : 'Unknown date';
+
+    var capturedStr = t.captured_at ? new Date(t.captured_at).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }) : dateStr;
+
+    var html =
+      '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--line);">' +
+        '<div>' +
+          '<div style="font-size:20px; font-weight:800; color:var(--fg); letter-spacing:-.02em;">' + esc(t.desc) + '</div>' +
+          '<div style="font-size:13px; color:var(--muted); font-weight:600; margin-top:2px;">' + catIcon(t.cat, t.type) + ' ' + esc(t.cat) + '</div>' +
+        '</div>' +
+        '<div class="amt num ' + (isInc ? "inc" : "exp") + '" style="font-size:20px; font-weight:800;">' + (isInc ? "+" : "−") + fmt(t.amount).replace("−","") + '</div>' +
+      '</div>' +
+      '<div class="inspect-meta">📅 <b>Date:</b> ' + dateStr + '</div>';
+
+    if (isAuto) {
+      var appSender = t.source_app_or_sender || "GCash/Wallet";
+      var sourceTypeLabel = t.source_type === "AUTOMATED_SMS" ? "SMS Alert" : "App Notification";
+
+      html +=
+        '<div class="inspect-meta">📲 <b>Source:</b> <span class="source-badge auto">⚡ ' + esc(appSender) + ' (' + sourceTypeLabel + ')</span></div>' +
+        '<div class="inspect-meta">⏰ <b>Captured:</b> ' + capturedStr + '</div>';
+
+      if (t.ref) {
+        html += '<div class="inspect-meta">🔢 <b>Reference No:</b> <code>' + esc(t.ref) + '</code></div>';
+      }
+
+      html +=
+        '<div class="inspect-section-title">📜 Scanned Raw Payload</div>';
+
+      if (t.raw_message_text) {
+        html += '<div class="raw-msg-box">' + esc(t.raw_message_text) + '</div>';
+      } else {
+        html += '<div class="raw-msg-box" style="color:var(--muted); font-style:italic;">No raw message text stored for this record.</div>';
+      }
+    } else {
+      html +=
+        '<div class="inspect-meta">👤 <b>Source:</b> <span class="source-badge manual">✏️ Manual Entry</span></div>' +
+        '<div class="inspect-notice">' +
+          '<span style="font-size:20px;">ℹ️</span>' +
+          '<span>This transaction was entered manually.</span>' +
+        '</div>';
+    }
+
+    bodyEl.innerHTML = html;
+    scrim.classList.add("show");
+  }
+
+  function closeInspector() {
+    var scrim = el("#inspectorScrim");
+    if (scrim) scrim.classList.remove("show");
+  }
 
   // ---------- Category dropdown ----------
   function fillCategories(){
@@ -1921,7 +2060,7 @@
     var cat = el("#category").value;
     if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
     if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
-    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false });
+    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false, source:"manual", source_type:"MANUAL", source_app_or_sender:null, raw_message_text:null, captured_at:null });
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "ADD_TRANSACTION");
     save(); render();
     el("#addForm").reset();
@@ -2684,7 +2823,7 @@
       else if (/load|prepaid|\bdata\b|mobile data/i.test(low)) cat = "Load & Data";
     }
     var desc = wallet + (who ? " · " + who : (type === "income" ? " Cash In" : " Payment"));
-    return { desc: desc, amount: Math.round(amount*100)/100, type: type, cat: cat, ref: ref };
+    return { desc: desc, amount: Math.round(amount*100)/100, type: type, cat: cat, ref: ref, source_app_or_sender: wallet };
   }
 
   window.UniBudget = window.UniBudget || {};
@@ -2696,6 +2835,9 @@
 
     if (!state.txns) state.txns = [];
     var currentTime = now();
+    var rawText = String(text).trim();
+    var sourceType = parsed.ref ? "AUTOMATED_SMS" : "AUTOMATED_NOTIFICATION";
+    var sourceApp = parsed.source_app_or_sender || "GCash";
 
     // Case 1: Payload contains an explicit Ref No. (e.g. from SMS)
     if (parsed.ref) {
@@ -2718,6 +2860,10 @@
         unrefMatch.id = stableId;
         unrefMatch.ref = parsed.ref;
         unrefMatch.updated_at = currentTime;
+        unrefMatch.source_type = "AUTOMATED_SMS";
+        unrefMatch.source_app_or_sender = sourceApp;
+        unrefMatch.raw_message_text = rawText;
+        unrefMatch.captured_at = currentTime;
         if (parsed.desc) unrefMatch.desc = parsed.desc;
         save(); render();
         return { ok:true, upgraded:true, txn:unrefMatch };
@@ -2725,6 +2871,10 @@
 
       parsed.id = stableId; parsed.ts = currentTime; parsed.updated_at = currentTime;
       parsed.deleted = false; parsed.source = "gcash-auto";
+      parsed.source_type = sourceType;
+      parsed.source_app_or_sender = sourceApp;
+      parsed.raw_message_text = rawText;
+      parsed.captured_at = currentTime;
       state.txns.push(parsed);
       if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
       save(); render();
@@ -2752,6 +2902,10 @@
 
     parsed.ts = currentTime; parsed.updated_at = currentTime;
     parsed.deleted = false; parsed.source = "gcash-auto"; parsed.ref = null;
+    parsed.source_type = sourceType;
+    parsed.source_app_or_sender = sourceApp;
+    parsed.raw_message_text = rawText;
+    parsed.captured_at = currentTime;
     state.txns.push(parsed);
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
     save(); render();
@@ -3243,6 +3397,19 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
       var preset = this.getAttribute("data-preset");
       if (el("#uDesc")) el("#uDesc").value = preset;
     });
+  });
+
+  // Transaction Inspector dismissal bindings
+  var inspectorCloseBtn = el("#inspectorCloseBtn");
+  if (inspectorCloseBtn) inspectorCloseBtn.addEventListener("click", closeInspector);
+  var inspectorScrim = el("#inspectorScrim");
+  if (inspectorScrim) {
+    inspectorScrim.addEventListener("click", function(e) {
+      if (e.target === inspectorScrim) closeInspector();
+    });
+  }
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") closeInspector();
   });
 
   if (el("#utangSettleClose")) el("#utangSettleClose").addEventListener("click", closeUtangSettle);
