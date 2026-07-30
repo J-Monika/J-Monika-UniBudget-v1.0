@@ -47,6 +47,7 @@ public class GcashCaptureStore {
     private static final Pattern REF =
             Pattern.compile("ref(?:erence)?\\.?\\s*(?:no\\.?)?\\s*[:#]?\\s*([0-9]{6,})", Pattern.CASE_INSENSITIVE);
 
+    private static final String KEY_SEEN = "seen_refs";
     private static final long SEEN_WINDOW_MS = 24 * 60 * 60 * 1000L; // 24 hours
     private static final long FUZZY_WINDOW_MS = 3 * 60 * 1000L; // 3 min
 
