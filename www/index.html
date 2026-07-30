@@ -3725,6 +3725,22 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
       toast("Category colors reset to default");
     });
   }
+  // Account section menu button listeners
+  if (el("#connectGcashBtn")) el("#connectGcashBtn").addEventListener("click", openGcashSetup);
+  if (el("#baonBtn")) el("#baonBtn").addEventListener("click", function() { var m = el("#alScrim"); if (m) m.classList.add("show"); });
+  if (el("#notifBtn")) {
+    el("#notifBtn").addEventListener("click", function() {
+      var notifPop = el("#menuNotif");
+      if (notifPop) notifPop.click();
+      else toast("🔔 Budget alerts configured in system settings.");
+    });
+  }
+  if (el("#frameworkBtn")) el("#frameworkBtn").addEventListener("click", function() { var m = el("#fwScrim"); if (m) m.classList.add("show"); });
+  if (el("#securityBtn")) el("#securityBtn").addEventListener("click", function() { var m = el("#secScrim"); if (m) m.classList.add("show"); });
+  if (el("#rewardsBtn")) el("#rewardsBtn").addEventListener("click", openAchievements);
+  if (el("#limitsBtn2")) el("#limitsBtn2").addEventListener("click", function() { var m = el("#scrim"); if (m) m.classList.add("show"); });
+  if (el("#logoutBtn2")) el("#logoutBtn2").addEventListener("click", logout);
+
   document.addEventListener("click", function(e) {
     if (!e.target.closest("#chartPopover") && !e.target.closest(".chart-sector")) {
       closeChartPopover();
