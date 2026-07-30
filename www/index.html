@@ -351,6 +351,70 @@
     font-weight: 600; margin-top: 10px; display: flex; align-items: center; gap: 10px;
   }
 
+  /* ---------- Deep Navy Header & Rewards Top Button ---------- */
+  header.bar {
+    background: #101D3A !important;
+    box-shadow: 0 4px 20px rgba(16, 29, 58, 0.4) !important;
+  }
+  .rewards-top-btn {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24) !important;
+    color: #3a2a00 !important; font-weight: 800 !important;
+    border: 0 !important; box-shadow: 0 3px 10px rgba(245,158,11,.4) !important;
+  }
+  .rewards-top-btn:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+    transform: translateY(-1px);
+  }
+
+  /* ---------- Interactive Donut Chart & Popover ---------- */
+  .donut-card { margin-bottom: 24px; position: relative; overflow: visible !important; }
+  .chart-sector { cursor: pointer; transition: opacity .15s, stroke-width .15s; }
+  .chart-sector:hover { opacity: .85; stroke-width: 26; }
+  .chart-popover {
+    position: absolute; display: none; z-index: 90;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    padding: 14px 16px; min-width: 210px; animation: inspectPop .2s ease;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+  }
+  .chart-popover.show { display: block; }
+  .pop-head { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15.5px; color: var(--fg); }
+  .pop-meta { font-size: 13px; color: var(--muted); font-weight: 700; margin-top: 4px; }
+  .pop-color-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
+    font-size: 12px; font-weight: 700; color: var(--muted);
+  }
+  .pop-color-picker {
+    width: 32px; height: 32px; border: 0; padding: 0; border-radius: 50%;
+    cursor: pointer; background: none; vertical-align: middle;
+  }
+
+  /* ---------- Bottom Navigation Bar & Elevated FAB ---------- */
+  nav#tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: #101D3A; border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 6px 12px 10px; box-shadow: 0 -6px 24px rgba(0,0,0,0.35);
+  }
+  nav#tabbar button {
+    background: transparent; border: 0; color: #94a3b8; cursor: pointer;
+    font-family: inherit; font-size: 11px; font-weight: 700;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    flex: 1; padding: 4px 0; transition: color .15s;
+  }
+  nav#tabbar button:hover, nav#tabbar button.active { color: #ffffff; }
+  nav#tabbar button .tab-ic { font-size: 20px; line-height: 1; display: block; margin-bottom: 2px; }
+  nav#tabbar button.fab-tab { position: relative; top: -16px; flex: 0 0 auto; padding: 0 6px; }
+  .fab-circle {
+    width: 54px; height: 54px; border-radius: 50%; background: #101D3A;
+    border: 3.5px solid #3b82f6; color: #ffffff; font-size: 28px; font-weight: 800;
+    display: grid; place-items: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    transition: transform .15s, border-color .15s; line-height: 1;
+  }
+  .fab-circle:hover { transform: scale(1.08); border-color: #60a5fa; }
+  .fab-circle:active { transform: scale(.95); }
+
   /* ---------- Modal ---------- */
   .scrim {
     position: fixed; inset: 0; background: rgba(15,20,35,.5); backdrop-filter: blur(3px);
@@ -979,6 +1043,7 @@
       </select>
       <button class="h-btn" id="syncBtn"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Synced</span></button>
       <button class="h-btn solid" id="goalsBtn">🎯 Goals</button>
+      <button class="h-btn rewards-top-btn" id="rewardsTopBtn">🏆 Rewards</button>
       <div class="user-menu">
         <button class="avatar" id="avatarBtn" aria-label="Account menu">U</button>
         <div class="menu-pop" id="menuPop">
@@ -997,8 +1062,31 @@
   </div>
 </header>
 
-<main>
-  <div id="notifBannersContainer"></div>
+  <!-- ===== INTERACTIVE SUBDIVIDED DONUT CHART SECTION ===== -->
+  <section class="card donut-card" id="donutSection">
+    <div class="sec-head" style="margin-bottom:2px;">
+      <h2>📊 Spending Overview</h2>
+      <span class="side link" id="donutResetColors" style="font-size:12px;">Reset Colors</span>
+    </div>
+    <div class="donut-wrap" style="position:relative; width:100%; display:flex; justify-content:center; align-items:center; padding:12px 0;">
+      <svg id="donutSvg" viewBox="0 0 200 200" width="220" height="220" style="display:block; overflow:visible;">
+        <circle cx="100" cy="100" r="75" fill="none" stroke="var(--track)" stroke-width="22" />
+        <g id="donutPaths"></g>
+        <text x="100" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="var(--muted)" font-family="inherit">Total Balance</text>
+        <text x="100" y="114" text-anchor="middle" font-size="19" font-weight="800" fill="var(--ink)" class="num" id="donutCenterBalance" font-family="inherit">₱0.00</text>
+      </svg>
+      <!-- Floating interactive popover tooltip -->
+      <div id="chartPopover" class="chart-popover">
+        <div class="pop-head"><span id="popIcon">🧺</span> <span id="popName">Groceries</span></div>
+        <div class="pop-meta" id="popMeta">₱0.00 (0%)</div>
+        <div class="pop-color-row">
+          <span>Custom Color:</span>
+          <input type="color" id="popColorPicker" class="pop-color-picker" />
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div class="grid">
     <!-- LEFT RAIL -->
     <div class="stack">
@@ -1545,11 +1633,11 @@
 <div id="mascotToast" class="mascot-toast"></div>
 
 <nav id="tabbar" aria-label="Quick actions">
-  <button type="button" data-act="home"><span>🏠</span>Home</button>
-  <button type="button" data-act="utang"><span>🤝</span>Utang</button>
-  <button type="button" data-act="gcash"><span>🔗</span>Wallets</button>
-  <button type="button" data-act="rewards"><span>🏆</span>Rewards</button>
-  <button type="button" data-act="profile"><span>👤</span>Profile</button>
+  <button type="button" data-act="home"><span class="tab-ic">🏠</span>Home</button>
+  <button type="button" data-act="gcash"><span class="tab-ic">🔗</span>Wallets</button>
+  <button type="button" id="fabAddBtn" class="fab-tab" aria-label="Add transaction shortcut"><div class="fab-circle">+</div></button>
+  <button type="button" data-act="txns"><span class="tab-ic">📊</span>Transactions</button>
+  <button type="button" data-act="utang"><span class="tab-ic">🤝</span>Utangs</button>
 </nav>
 
 <div id="onb"><div class="onb-card" id="onbCard"></div></div>
@@ -1961,6 +2049,145 @@
 
     // Render Utang / Pa-Suyo tracker
     renderUtang();
+
+    // Render Subdivided Interactive Donut Chart
+    renderDonutChart();
+  }
+
+  // ---------- Donut Chart & Dynamic Color Logic ----------
+  function getCategoryColor(catName, typeVal) {
+    if (!state.categoryColors) state.categoryColors = {};
+    if (state.categoryColors[catName]) return state.categoryColors[catName];
+    if (catName === "Income" || typeVal === "income") return "#10B981"; // Safe Green
+
+    var spent = 0;
+    activeTxns().forEach(function(t){
+      if (t.type === "expense" && t.cat === catName) spent += t.amount;
+    });
+    var limit = (state.goals && state.goals[catName]) || (state.limits && state.limits[catName]) || 0;
+    if (limit > 0) {
+      var pct = spent / limit;
+      if (pct >= 1.0) return "#991B1B";  // Over budget -> Deep Crimson
+      if (pct >= 0.75) return "#EF4444"; // Near limit -> Bright Red
+    }
+    return "#F59E0B"; // Within budget -> Warm Orange
+  }
+
+  function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+    var angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+    return {
+      x: centerX + (radius * Math.cos(angleInRadians)),
+      y: centerY + (radius * Math.sin(angleInRadians))
+    };
+  }
+
+  function describeArc(x, y, radius, startAngle, endAngle) {
+    if (endAngle - startAngle >= 359.9) endAngle = startAngle + 359.9;
+    var start = polarToCartesian(x, y, radius, endAngle);
+    var end = polarToCartesian(x, y, radius, startAngle);
+    var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+    return [
+      "M", start.x, start.y,
+      "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+    ].join(" ");
+  }
+
+  function renderDonutChart() {
+    var svgGroup = el("#donutPaths");
+    var centerVal = el("#donutCenterBalance");
+    if (!svgGroup) return;
+    svgGroup.innerHTML = "";
+
+    var income = 0, spent = 0, perCat = {};
+    activeTxns().forEach(function(t){
+      if (t.type === "income") income += t.amount;
+      else { spent += t.amount; perCat[t.cat] = (perCat[t.cat] || 0) + t.amount; }
+    });
+    var balance = income - spent;
+    if (centerVal) centerVal.textContent = fmt(balance);
+
+    var totalSum = income + spent;
+    if (totalSum <= 0) return;
+
+    var cx = 100, cy = 100, r = 75, circumference = 2 * Math.PI * r;
+    var currentAngle = 0;
+    var gapAngle = totalSum > income && Object.keys(perCat).length > 1 ? 2.5 : 0;
+
+    // 1. Income Arc
+    if (income > 0) {
+      var incPct = income / totalSum;
+      var incAngle = incPct * 360;
+      var startA = currentAngle;
+      var endA = currentAngle + Math.max(0.5, incAngle - gapAngle);
+
+      var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", "chart-sector");
+      path.setAttribute("d", describeArc(cx, cy, r, startA, endA));
+      path.setAttribute("stroke", getCategoryColor("Income", "income"));
+      path.setAttribute("stroke-width", "22");
+      path.setAttribute("fill", "none");
+      path.addEventListener("click", function(e) {
+        openChartPopover("Income", income, incPct, true, e);
+      });
+      svgGroup.appendChild(path);
+      currentAngle += incAngle;
+    }
+
+    // 2. Subdivided Expense Category Arcs
+    var cats = Object.keys(perCat);
+    cats.forEach(function(catName) {
+      var catAmt = perCat[catName];
+      if (catAmt > 0) {
+        var catPct = catAmt / totalSum;
+        var expPctOfTotalSpent = spent > 0 ? (catAmt / spent) : 0;
+        var catAngle = catPct * 360;
+        var startA = currentAngle;
+        var endA = currentAngle + Math.max(0.5, catAngle - gapAngle);
+        var color = getCategoryColor(catName, "expense");
+
+        var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("class", "chart-sector");
+        path.setAttribute("d", describeArc(cx, cy, r, startA, endA));
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-width", "22");
+        path.setAttribute("fill", "none");
+        path.addEventListener("click", function(e) {
+          openChartPopover(catName, catAmt, expPctOfTotalSpent, false, e);
+        });
+        svgGroup.appendChild(path);
+        currentAngle += catAngle;
+      }
+    });
+  }
+
+  function openChartPopover(catName, amount, pctVal, isInc, evt) {
+    var pop = el("#chartPopover");
+    if (!pop) return;
+    if (evt && evt.stopPropagation) evt.stopPropagation();
+
+    var icon = isInc ? "↓" : catIcon(catName, "expense");
+    el("#popIcon").textContent = icon;
+    el("#popName").textContent = catName;
+    el("#popMeta").textContent = fmt(amount) + " (" + Math.round(pctVal * 100) + "% of " + (isInc ? "total" : "spending") + ")";
+
+    var picker = el("#popColorPicker");
+    if (picker) {
+      var currentColor = getCategoryColor(catName, isInc ? "income" : "expense");
+      picker.value = currentColor.indexOf("#") === 0 ? currentColor : "#F59E0B";
+      picker.onchange = function() {
+        if (!state.categoryColors) state.categoryColors = {};
+        state.categoryColors[catName] = this.value;
+        save();
+        render();
+        openChartPopover(catName, amount, pctVal, isInc);
+      };
+    }
+    pop.classList.add("show");
+  }
+
+  function closeChartPopover() {
+    var pop = el("#chartPopover");
+    if (pop) pop.classList.remove("show");
   }
   // ---------- Transaction Inspector Modal ----------
   function openInspector(tid) {
@@ -3458,11 +3685,37 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     else toast("GCash auto-detection runs in the installed Android app.");
   }
 
+  // UI Redesign Event Bindings
+  if (el("#rewardsTopBtn")) el("#rewardsTopBtn").addEventListener("click", openAchievements);
+  if (el("#fabAddBtn")) {
+    el("#fabAddBtn").addEventListener("click", function() {
+      var addForm = el("#addForm");
+      if (addForm) {
+        addForm.scrollIntoView({ behavior: "smooth", block: "center" });
+        var descInput = el("#desc");
+        if (descInput) setTimeout(function(){ descInput.focus(); }, 300);
+      }
+    });
+  }
+  if (el("#donutResetColors")) {
+    el("#donutResetColors").addEventListener("click", function() {
+      state.categoryColors = {};
+      save();
+      render();
+      closeChartPopover();
+      toast("Category colors reset to default");
+    });
+  }
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest("#chartPopover") && !e.target.closest(".chart-sector")) {
+      closeChartPopover();
+    }
+  });
+
   // Bottom quick-action bar
   el("#tabbar").addEventListener("click", function(e){
     var b = e.target.closest("button"); if (!b) return;
     var act = b.getAttribute("data-act");
-    // Update active state (skip logout — it's an action, not a destination)
     if (act !== "logout") {
       document.querySelectorAll("#tabbar button").forEach(function(btn){ btn.classList.remove("active"); });
       b.classList.add("active");
@@ -3470,8 +3723,14 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     if (act === "home") window.scrollTo({ top: 0, behavior: "smooth" });
     else if (act === "rewards") openAchievements();
     else if (act === "logout") logout();
-    else if (act === "gcash") openGcashSetup();
-    else if (act === "profile") {
+    else if (act === "gcash" || act === "wallets") openGcashSetup();
+    else if (act === "txns") {
+      var sec = document.getElementById("txns");
+      if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (act === "utang") {
+      var sec = document.getElementById("utangSection");
+      if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (act === "profile") {
       var acct = document.getElementById("acctSection");
       if (acct) acct.scrollIntoView({ behavior: "smooth", block: "start" });
     }
