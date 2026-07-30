@@ -647,7 +647,67 @@
   .acct-btn.gcash { border-color: var(--accent); color: var(--accent-strong); background: var(--accent-soft); }
   .acct-btn.gcash .acct-hint { color: var(--accent-strong); opacity: .8; }
   .acct-btn.danger { color: var(--spent); }
-  .acct-btn.danger:hover { background: rgba(220,38,38,.08); border-color: var(--spent); }
+  /* ---------- Utang / Pa-Suyo Tracker ---------- */
+  .utang-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 24px 16px; }
+  .utang-metric {
+    background: var(--page); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+  }
+  .utang-metric .eyebrow { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; }
+  .utang-metric-val { font-size: 22px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .utang-metric-val.pos { color: var(--income); }
+  .utang-metric-val.neg { color: var(--spent); }
+
+  .utang-list { padding: 0 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .counterparty-card {
+    background: var(--page); border: 1.5px solid var(--line); border-radius: 16px;
+    padding: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); transition: border-color .15s; margin-bottom: 12px;
+  }
+  .counterparty-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px;
+  }
+  .counterparty-name { font-size: 15.5px; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+  .counterparty-bal { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .counterparty-bal.pos { color: var(--income); }
+  .counterparty-bal.neg { color: var(--spent); }
+  .counterparty-bal.zero { color: var(--muted); }
+
+  .utang-entries-body { display: flex; flex-direction: column; gap: 10px; }
+  .utang-entry-item {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .utang-entry-top { display: flex; align-items: center; justify-content: space-between; }
+  .utang-type-chip {
+    font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .utang-type-chip.given { background: rgba(16,185,129,0.18); color: #10B981; }
+  .utang-type-chip.taken { background: rgba(239,68,68,0.18); color: #EF4444; }
+  .utang-type-chip.suyo { background: rgba(59,130,246,0.18); color: #3B82F6; }
+
+  .utang-status-chip {
+    font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; text-transform: uppercase;
+  }
+  .utang-status-chip.unsettled { background: rgba(245,158,11,0.18); color: #F59E0B; }
+  .utang-status-chip.partially { background: rgba(59,130,246,0.18); color: #3B82F6; }
+  .utang-status-chip.settled { background: rgba(16,185,129,0.18); color: #10B981; }
+
+  .utang-progress-bar {
+    height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; margin-top: 4px;
+  }
+  .utang-progress-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s; }
+
+  .utang-entry-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+  .utang-btn-settle {
+    border: 0; background: var(--accent); color: #fff; font-weight: 700; font-size: 12.5px;
+    padding: 6px 13px; border-radius: 8px; cursor: pointer; transition: transform .1s, background .15s;
+  }
+  .utang-btn-settle:active { transform: scale(.95); }
+  .utang-btn-del {
+    border: 1px solid var(--line); background: transparent; color: var(--spent); font-weight: 700; font-size: 12.5px;
+    padding: 6px 11px; border-radius: 8px; cursor: pointer; transition: background .15s;
+  }
+  .utang-btn-del:hover { background: rgba(239,68,68,0.1); }
 
   /* ---------- Petsa de Peligro forecaster ---------- */
   .fc-body { padding: 6px 26px 24px; }
@@ -3326,7 +3386,9 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     });
 
     if (!activeEntries.length) {
-      listContainer.innerHTML = '<div class="empty"><div class="big">🤝</div>No outstanding utang records.<br>All clear! Check Recent History below for settled entries.</div>';
+      listContainer.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--muted);font-weight:600;"><div class="big" style="font-size:32px;margin-bottom:8px">🤝</div>No outstanding utang records.<br>All clear! Check Recent History below for settled entries.</div>';
+      renderUtangHistory();
+      return;
     }
 
     // Group entries by counterparty
@@ -3498,17 +3560,25 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     if (btnS) btnS.className = t === "PA_SUYO" ? "on-suyo" : "";
   }
 
-  function openUtangAdd() {
-    setUtangType("UTANG_GIVEN");
+  function resetUtangAddForm() {
     if (el("#uCounterparty")) el("#uCounterparty").value = "";
     if (el("#uAmount")) el("#uAmount").value = "";
     if (el("#uDesc")) el("#uDesc").value = "";
     if (el("#uDueDate")) el("#uDueDate").value = "";
+  }
+
+  function openUtangAdd() {
+    setUtangType("UTANG_GIVEN");
+    resetUtangAddForm();
     if (el("#uCurrency")) el("#uCurrency").value = state.currency || "PHP";
     if (el("#uAmtSym")) el("#uAmtSym").textContent = CURRENCIES[state.currency || "PHP"] || "₱";
     el("#utangAddScrim").classList.add("show");
   }
-  function closeUtangAdd() { el("#utangAddScrim").classList.remove("show"); }
+
+  function closeUtangAdd() {
+    el("#utangAddScrim").classList.remove("show");
+    resetUtangAddForm();
+  }
 
   function saveUtangAdd(e) {
     e.preventDefault();
@@ -3531,9 +3601,10 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
         dueDate: due || null
       });
 
-      save(); render();
-      toast("🤝 Utang Saved!");
-      setTimeout(closeUtangAdd, 900);
+      save();
+      render();
+      closeUtangAdd();
+      toast("🤝 Utang record added successfully!");
     } catch (err) {
       console.error("[saveUtangAdd] PeerLedger.addEntry failed:", err);
       toast("❌ Save failed: " + (err.message || "Unknown error"));
