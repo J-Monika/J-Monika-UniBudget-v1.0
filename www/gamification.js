@@ -45,6 +45,18 @@
     };
   }
 
+  function calculateBadgeProgress(currentValue, targetValue) {
+    var target = typeof targetValue === "number" && targetValue > 0 ? targetValue : 1;
+    var current = typeof currentValue === "number" ? Math.max(0, currentValue) : (currentValue ? 1 : 0);
+    var pct = Math.min(100, Math.round((current / target) * 100));
+    return {
+      current: current,
+      target: target,
+      pct: pct,
+      isUnlocked: pct >= 100
+    };
+  }
+
   // ---------- Refactored Tipid Streak Engine ----------
   // Evaluates spending in discretionary categories ("Fun & Social", "Other").
   // Essential categories (Rent, Food & Dining, Books, Transport, Load, Subs) do NOT break the streak.
@@ -120,6 +132,7 @@
     calculateLevel: calculateLevel,
     xpForLevel: xpForLevel,
     xpProgressInLevel: xpProgressInLevel,
+    calculateBadgeProgress: calculateBadgeProgress,
     calculateTipidStreak: calculateTipidStreak,
     runReset: runGamificationReset,
 

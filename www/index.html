@@ -609,18 +609,61 @@
   .onb-field { text-align:left; margin-bottom:12px; }
   .onb-field label { font-size:13px; font-weight:700; color:var(--ink-soft); display:block; margin-bottom:6px; }
 
-  /* Achievements */
+  /* Achievements & Dynamic Badge Progress */
   .lvl-head { padding:6px 26px 4px; display:flex; align-items:center; gap:14px; }
   .lvl-ring { width:60px; height:60px; border-radius:50%; display:grid; place-items:center; flex-shrink:0;
     font-weight:800; font-size:20px; color:#3a2a00; background:linear-gradient(160deg,var(--gold-2),var(--gold)); box-shadow:0 6px 16px rgba(245,158,11,.35); }
   .lvl-meta { flex:1; } .lvl-meta .t { font-weight:800; font-size:16px; } .lvl-meta .s { font-size:12.5px; color:var(--muted); }
   .badge-grid { padding:16px 24px 8px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-  .badge { text-align:center; padding:14px 8px; border-radius:16px; background:var(--page); border:1px solid var(--line); transition:transform .15s; }
-  .badge.earned { background:var(--accent-soft); border-color:var(--accent); animation:pop .4s both; }
-  .badge .ic { font-size:30px; filter:grayscale(1); opacity:.45; }
+  .badge {
+    text-align:center; padding:14px 8px 10px; border-radius:16px; background:var(--page); border:1px solid var(--line);
+    transition:all .15s; position:relative; display:flex; flex-direction:column; align-items:center;
+  }
+  .badge.earned { background:var(--accent-soft); border-color:var(--accent); box-shadow:0 4px 14px rgba(79,70,229,.18); animation:pop .4s both; }
+  .badge .ic { font-size:30px; filter:grayscale(1); opacity:.45; transition:all .2s; }
   .badge.earned .ic { filter:none; opacity:1; }
-  .badge .bn { font-size:11.5px; font-weight:800; margin-top:6px; }
-  .badge .bd { font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.3; }
+  .badge .bn { font-size:11.5px; font-weight:800; margin-top:6px; line-height:1.2; }
+  .badge .bd { font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.3; margin-bottom:6px; }
+
+  .badge-progress-wrap { width:100%; margin-top:auto; padding-top:4px; text-align:center; }
+  .badge-progress-track { height:5px; border-radius:999px; background:var(--track); overflow:hidden; width:100%; }
+  .badge-progress-fill { display:block; height:100%; border-radius:999px; background:var(--accent); transition:width .4s ease; }
+  .badge.earned .badge-progress-fill { background:linear-gradient(90deg, #16a34a, #4ade80); }
+  .badge-pct-pill { font-size:9.5px; font-weight:800; color:var(--muted); margin-top:3px; display:inline-block; }
+  .badge.earned .badge-pct-pill { color:var(--income); }
+
+  /* Mascot Congratulatory Popup Toast Overlay */
+  .mascot-toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+    z-index: 350; width: 92%; max-width: 420px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    color: #fff; border: 1.5px solid #6366f1; border-radius: 20px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.45), 0 0 20px rgba(99,102,241,.35);
+    padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+    opacity: 0; pointer-events: none; transition: transform .4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity .3s ease;
+  }
+  .mascot-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1; pointer-events: auto;
+  }
+  .mascot-toast-avatar { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
+  .mascot-toast-avatar .mascot { width: 54px; height: 54px; filter: drop-shadow(0 4px 10px rgba(245,158,11,.5)); }
+  .mascot-toast-badge-ic {
+    position: absolute; bottom: -2px; right: -4px; width: 24px; height: 24px;
+    border-radius: 50%; background: var(--card); border: 1.5px solid var(--accent);
+    display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  }
+  .mascot-toast-content { flex: 1; min-width: 0; }
+  .mascot-toast-title { font-weight: 800; font-size: 14.5px; color: #fbbf24; display: flex; align-items: center; gap: 6px; }
+  .mascot-toast-msg { font-weight: 700; font-size: 13px; color: #fff; margin-top: 1px; }
+  .mascot-toast-sub { font-size: 11.5px; color: #a5b4fc; font-weight: 600; margin-top: 2px; }
+  .mascot-toast-close {
+    border: 0; background: rgba(255,255,255,.14); color: #fff;
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    font-size: 13px; font-weight: 800; flex-shrink: 0; display: grid; place-items: center;
+    transition: background .15s;
+  }
+  .mascot-toast-close:hover { background: rgba(255,255,255,.28); }
 
   /* Celebration confetti */
   #confetti { position:fixed; inset:0; z-index:400; pointer-events:none; display:none; }
@@ -1441,6 +1484,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="mascotToast" class="mascot-toast"></div>
 
 <nav id="tabbar" aria-label="Quick actions">
   <button type="button" data-act="home"><span>🏠</span>Home</button>
@@ -2080,17 +2124,123 @@
   // ---- Gamification ----
   var LEVEL_TITLES = ["Baon Newbie","Ipon Trainee","Tipid Rookie","Budget Cadet","Baon Boss","Diskarte Master","Ipon Sensei","Wallet Wizard","Baon Legend"];
   function levelTitle(lv){ return LEVEL_TITLES[Math.min(Math.max(1, lv)-1, LEVEL_TITLES.length-1)]; }
+
+  function evalBadge(b, st, g) {
+    var val = b.current ? b.current(st, g) : 0;
+    var target = b.target || 1;
+    var unlockedArr = (g && Array.isArray(g.unlockedAchievements)) ? g.unlockedAchievements : [];
+
+    var isUnlocked = unlockedArr.indexOf(b.id) !== -1 || (b.test ? b.test(st, g) : val >= target);
+    var currentVal = isUnlocked ? target : Math.min(val, target);
+    var pct = isUnlocked ? 100 : (target > 0 ? Math.min(100, Math.floor((currentVal / target) * 100)) : 0);
+
+    return {
+      current: currentVal,
+      target: target,
+      pct: pct,
+      isUnlocked: isUnlocked
+    };
+  }
+
   var BADGES = [
-    { id:"first", icon:"🌱", name:"First Peso", desc:"Log your first record", test:function(st, g){ return st.txCount>=1; } },
-    { id:"baon", icon:"💸", name:"Baon Boss", desc:"Set your allowance", test:function(st, g){ return st.hasBaon; } },
-    { id:"auto", icon:"⚡", name:"Auto-Pilot", desc:"Auto-log a wallet alert", test:function(st, g){ return st.autoCount>=1; } },
-    { id:"streak3", icon:"🔥", name:"On Fire", desc:"3-day tipid streak (₱0 on Fun & Other)", test:function(st, g){ return (g.tipidStreak || st.streak)>=3; } },
-    { id:"streak7", icon:"🗓️", name:"Week Warrior", desc:"7-day tipid streak (₱0 on Fun & Other)", test:function(st, g){ return (g.tipidStreak || st.streak)>=7; } },
-    { id:"log10", icon:"📊", name:"Diskarte", desc:"Log 10 records", test:function(st, g){ return st.txCount>=10; } },
-    { id:"log50", icon:"👑", name:"Ipon Royalty", desc:"Log 50 records", test:function(st, g){ return st.txCount>=50; } },
-    { id:"safe", icon:"🛡️", name:"Budget Guard", desc:"Stay in the green with baon set", test:function(st, g){ return st.hasBaon && st.safe; } },
-    { id:"lvl5", icon:"🏆", name:"High Roller", desc:"Reach Level 5", test:function(st, g){ return (g.level || st.level)>=5; } }
+    {
+      id: "first",
+      icon: "🌱",
+      name: "First Peso",
+      desc: "Log your first record",
+      target: 1,
+      xp: "+10 XP",
+      test: function(st, g) { return st.txCount >= 1; },
+      current: function(st, g) { return st.txCount; }
+    },
+    {
+      id: "baon",
+      icon: "💸",
+      name: "Baon Boss",
+      desc: "Set your allowance",
+      target: 1,
+      xp: "+20 XP",
+      test: function(st, g) { return st.hasBaon; },
+      current: function(st, g) { return st.hasBaon ? 1 : 0; }
+    },
+    {
+      id: "auto",
+      icon: "⚡",
+      name: "Auto-Pilot",
+      desc: "Auto-log a wallet alert",
+      target: 1,
+      xp: "+30 XP",
+      test: function(st, g) { return st.autoCount >= 1; },
+      current: function(st, g) { return st.autoCount >= 1 ? 1 : 0; }
+    },
+    {
+      id: "streak3",
+      icon: "🔥",
+      name: "On Fire",
+      desc: "3-day tipid streak (₱0 on Fun & Other)",
+      target: 3,
+      xp: "+25 XP",
+      test: function(st, g) { return (g.tipidStreak || st.streak) >= 3 || (g.unlockedAchievements && g.unlockedAchievements.indexOf("streak7") !== -1); },
+      current: function(st, g) {
+        if (g && Array.isArray(g.unlockedAchievements) && g.unlockedAchievements.indexOf("streak7") !== -1) return 3;
+        return (g.tipidStreak || st.streak);
+      }
+    },
+    {
+      id: "streak7",
+      icon: "🗓️",
+      name: "Week Warrior",
+      desc: "7-day tipid streak (₱0 on Fun & Other)",
+      target: 7,
+      xp: "+50 XP",
+      test: function(st, g) { return (g.tipidStreak || st.streak) >= 7; },
+      current: function(st, g) { return (g.tipidStreak || st.streak); }
+    },
+    {
+      id: "log10",
+      icon: "📊",
+      name: "Diskarte",
+      desc: "Log 10 records",
+      target: 10,
+      xp: "+30 XP",
+      test: function(st, g) { return st.txCount >= 10 || (g.unlockedAchievements && g.unlockedAchievements.indexOf("log50") !== -1); },
+      current: function(st, g) {
+        if (g && Array.isArray(g.unlockedAchievements) && g.unlockedAchievements.indexOf("log50") !== -1) return 10;
+        return st.txCount;
+      }
+    },
+    {
+      id: "log50",
+      icon: "👑",
+      name: "Ipon Royalty",
+      desc: "Log 50 records",
+      target: 50,
+      xp: "+100 XP",
+      test: function(st, g) { return st.txCount >= 50; },
+      current: function(st, g) { return st.txCount; }
+    },
+    {
+      id: "safe",
+      icon: "🛡️",
+      name: "Budget Guard",
+      desc: "Stay in the green with baon set",
+      target: 1,
+      xp: "+25 XP",
+      test: function(st, g) { return st.hasBaon && st.safe; },
+      current: function(st, g) { return (st.hasBaon && st.safe) ? 1 : 0; }
+    },
+    {
+      id: "lvl5",
+      icon: "🏆",
+      name: "High Roller",
+      desc: "Reach Level 5",
+      target: 5,
+      xp: "+75 XP",
+      test: function(st, g) { return (g.level || st.level) >= 5; },
+      current: function(st, g) { return (g.level || st.level); }
+    }
   ];
+
   function computeStats(s){
     var active = (s.txns||[]).filter(function(t){ return !t.deleted; });
     var txCount = active.length;
@@ -2145,9 +2295,18 @@
     el("#lvlBar").style.width = st.pct+"%";
     var grid = el("#badgeGrid"); grid.innerHTML = "";
     BADGES.forEach(function(b){
-      var earned = b.test(st, g);
+      var res = evalBadge(b, st, g);
+      var earned = res.isUnlocked;
       var d = document.createElement("div"); d.className = "badge"+(earned?" earned":"");
-      d.innerHTML = '<div class="ic">'+b.icon+'</div><div class="bn">'+esc(b.name)+'</div><div class="bd">'+esc(b.desc)+'</div>';
+
+      var progHtml = earned 
+        ? '<div class="badge-progress-wrap"><span class="badge-pct-pill">✓ Unlocked</span></div>'
+        : '<div class="badge-progress-wrap">' +
+            '<div class="badge-progress-track"><span class="badge-progress-fill" style="width:' + res.pct + '%"></span></div>' +
+            '<span class="badge-pct-pill">' + res.current + ' / ' + res.target + ' (' + res.pct + '%)</span>' +
+          '</div>';
+
+      d.innerHTML = '<div class="ic">'+b.icon+'</div><div class="bn">'+esc(b.name)+'</div><div class="bd">'+esc(b.desc)+'</div>' + progHtml;
       grid.appendChild(d);
     });
     el("#achScrim").classList.add("show");
@@ -2281,17 +2440,85 @@
     toast(msg);
     setTimeout(function(){ t.classList.remove("celebrate-toast"); }, 2600);
   }
-  // Detect newly-earned badges / level-ups after a change.
-  var _earnedIds = null, _level = null;
-  function progressBaseline(){ var st=computeStats(state); _level=st.level; _earnedIds={}; BADGES.forEach(function(b){ if(b.test(st)) _earnedIds[b.id]=1; }); }
-  function checkProgress(){
-    var st = computeStats(state);
-    if (_earnedIds){
-      var fresh = BADGES.filter(function(b){ return b.test(st) && !_earnedIds[b.id]; });
-      if (fresh.length){ celebrate("🏆 Unlocked: "+fresh[0].name+"!"); }
-      else if (_level!==null && st.level>_level){ celebrate("✨ Level up! You're now "+levelTitle(st.level)+" (Lv "+st.level+")"); }
+
+  // Mascot Congratulatory Popup Toast Notification
+  var mascotToastTimer = null;
+  function showMascotBadgeToast(badge){
+    var toastEl = el("#mascotToast");
+    if (!toastEl) return;
+
+    confettiBurst();
+
+    var html =
+      '<div class="mascot-toast-avatar">' +
+        '<div class="mascot sm"></div>' +
+        '<div class="mascot-toast-badge-ic">' + badge.icon + '</div>' +
+      '</div>' +
+      '<div class="mascot-toast-content">' +
+        '<div class="mascot-toast-title">🎉 Badge Unlocked!</div>' +
+        '<div class="mascot-toast-msg">Awesome job! You unlocked <b>' + esc(badge.name) + '</b></div>' +
+        '<div class="mascot-toast-sub">✨ ' + (badge.xp || "+XP") + ' earned for your Baon level!</div>' +
+      '</div>' +
+      '<button type="button" class="mascot-toast-close" id="mascotToastClose" aria-label="Close">✕</button>';
+
+    toastEl.innerHTML = html;
+    injectMascots(toastEl);
+
+    var closeBtn = toastEl.querySelector("#mascotToastClose");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function(){
+        toastEl.classList.remove("show");
+      });
     }
-    _level = st.level; _earnedIds = {}; BADGES.forEach(function(b){ if(b.test(st)) _earnedIds[b.id]=1; });
+
+    toastEl.classList.add("show");
+    clearTimeout(mascotToastTimer);
+    mascotToastTimer = setTimeout(function(){
+      toastEl.classList.remove("show");
+    }, 4000);
+  }
+
+  // Persistent achievement guarding & level tracking
+  var _level = null;
+  function progressBaseline(){
+    if (!state) return;
+    state.gamification = GamificationEngine.normalizeGamificationState(state.gamification);
+    var g = state.gamification;
+    var st = computeStats(state);
+    _level = st.level;
+
+    // Pre-populate already unlocked achievements on baseline without firing popup toast
+    BADGES.forEach(function(b){
+      var res = evalBadge(b, st, g);
+      if (res.isUnlocked && g.unlockedAchievements.indexOf(b.id) === -1) {
+        g.unlockedAchievements.push(b.id);
+      }
+    });
+  }
+
+  function checkProgress(){
+    if (!state) return;
+    state.gamification = GamificationEngine.normalizeGamificationState(state.gamification);
+    var g = state.gamification;
+    var st = computeStats(state);
+
+    var newlyUnlocked = [];
+    BADGES.forEach(function(b){
+      var res = evalBadge(b, st, g);
+      if (res.isUnlocked && g.unlockedAchievements.indexOf(b.id) === -1) {
+        g.unlockedAchievements.push(b.id);
+        newlyUnlocked.push(b);
+      }
+    });
+
+    if (newlyUnlocked.length > 0) {
+      save();
+      showMascotBadgeToast(newlyUnlocked[0]);
+    } else if (_level !== null && st.level > _level) {
+      celebrate("✨ Level up! You're now " + levelTitle(st.level) + " (Lv " + st.level + ")");
+    }
+
+    _level = st.level;
   }
 
   // ---- Onboarding ----

@@ -100,4 +100,23 @@ console.log("▶ Running UniBudget Gamification Engine Unit Tests...");
   console.log("  ✓ Test 5 Passed: Level progress percentage calculation");
 }
 
+// Test 6: Badge Progress Calculation Helper
+{
+  const p1 = GamificationEngine.calculateBadgeProgress(3, 10);
+  assert.strictEqual(p1.current, 3);
+  assert.strictEqual(p1.target, 10);
+  assert.strictEqual(p1.pct, 30);
+  assert.strictEqual(p1.isUnlocked, false);
+
+  const p2 = GamificationEngine.calculateBadgeProgress(10, 10);
+  assert.strictEqual(p2.pct, 100);
+  assert.strictEqual(p2.isUnlocked, true);
+
+  const p3 = GamificationEngine.calculateBadgeProgress(15, 10);
+  assert.strictEqual(p3.pct, 100);
+  assert.strictEqual(p3.isUnlocked, true);
+
+  console.log("  ✓ Test 6 Passed: Dynamic badge percentage & completion calculation");
+}
+
 console.log("\n🎉 ALL GAMIFICATION UNIT TESTS PASSED SUCCESSFULLY!\n");
