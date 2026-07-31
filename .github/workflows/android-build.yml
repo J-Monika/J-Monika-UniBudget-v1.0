@@ -121,11 +121,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK Components & Accept Licenses
+      - name: Setup Android SDK Components
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager --install "platforms;android-37" "build-tools;34.0.0" || true
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          SDK_PATH="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -f "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+            "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;34.0.0" || true
+          else
+            yes | sdkmanager --licenses || true
+            sdkmanager "platforms;android-37" "build-tools;34.0.0" || true
+          fi
+          echo "sdk.dir=$SDK_PATH" > android/local.properties
 
       - name: Build debug APK  (versionCode 10 / versionName "10.0")
         env:
