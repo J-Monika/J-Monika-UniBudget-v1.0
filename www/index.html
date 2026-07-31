@@ -2964,38 +2964,70 @@
   var onbStep = 0;
   function showOnboarding(){ onbStep = 0; renderOnb(); el("#onb").classList.add("show"); }
   function hideOnboarding(){ el("#onb").classList.remove("show"); }
-  function finishOnboarding(){ state.onboarded = true; save(); hideOnboarding(); render(); setTimeout(function(){ celebrate("🪙 Ayos! You're all set — game na!"); }, 250); }
+  function finishOnboarding(){
+    if (state) { state.onboarded = true; }
+    try { save(); } catch(e) { console.error("[onboarding] save error:", e); }
+    hideOnboarding();
+    try { render(); } catch(e) { console.error("[onboarding] render error:", e); }
+    try { setTimeout(function(){ celebrate("🪙 Ayos! You're all set — game na!"); }, 250); } catch(e) {}
+  }
   function renderOnb(){
-    var native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+    var native = !!(window.Capacitor && Capacitor.isNativePlatform && typeof Capacitor.isNativePlatform === "function" && Capacitor.isNativePlatform());
     var dots = '<div class="onb-dots"><i class="'+(onbStep===0?"on":"")+'"></i><i class="'+(onbStep===1?"on":"")+'"></i><i class="'+(onbStep===2?"on":"")+'"></i></div>';
     var card = el("#onbCard"); var html = '<div class="mascot"></div>';
     if (onbStep===0){
-      html += '<div class="onb-step"><h3>Kumusta! I\'m Baon 🪙</h3><p>Your ipon buddy. I\'ll make sure your baon lasts the whole '+(state.allowance&&state.allowance.period==="monthly"?"month":"week")+' — kaya natin \'to!</p>'+
-        '<button class="submit" id="onbNext">Let\'s go →</button></div>'+dots;
+      html += '<div class="onb-step"><h3>Kumusta! I\'m Baon 🪙</h3><p>Your ipon buddy. I\'ll make sure your baon lasts the whole '+(state && state.allowance && state.allowance.period==="monthly"?"month":"week")+' — kaya natin \'to!</p>'+
+        '<button type="button" class="submit" id="onbNext">Let\'s go →</button></div>'+dots;
     } else if (onbStep===1){
       html += '<div class="onb-step"><h3>How much is your baon?</h3><p>Tell me your allowance and I\'ll compute how much is safe to spend each day.</p>'+
-        '<div class="onb-field"><label>Allowance (₱)</label><input id="onbAmount" class="num" type="number" min="0" step="50" placeholder="e.g. 1500" value="'+((state.allowance&&state.allowance.amount)||"")+'"></div>'+
+        '<div class="onb-field"><label>Allowance (₱)</label><input id="onbAmount" class="num" type="number" min="0" step="50" placeholder="e.g. 1500" value="'+((state && state.allowance && state.allowance.amount)||"")+'"></div>'+
         '<div class="onb-field"><label>How often?</label><select id="onbPeriod" class="f"><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>'+
-        '<button class="submit" id="onbNext">Save baon →</button><div style="margin-top:8px"><span class="side link" id="onbSkip" style="color:var(--muted);cursor:pointer;font-weight:700">Skip for now</span></div></div>'+dots;
+        '<button type="button" class="submit" id="onbNext">Save baon →</button><div style="margin-top:10px"><button type="button" class="side link" id="onbSkip" style="background:none;border:none;color:var(--muted);cursor:pointer;font-weight:700;font-size:14px;padding:6px 12px;">Skip for now</button></div></div>'+dots;
     } else {
       html += '<div class="onb-step"><h3>Auto-track your wallets</h3><p>Connect GCash, Maya, ShopeePay or GrabPay and I\'ll log your spending automatically — wala nang manual!</p>'+
-        '<button class="submit" id="onbConnect">'+(native?"🔗 Connect now":"Got it!")+'</button>'+
-        (native?'<div style="margin-top:8px"><span class="side link" id="onbSkip" style="color:var(--muted);cursor:pointer;font-weight:700">Maybe later</span></div>':'')+'</div>'+dots;
+        '<button type="button" class="submit" id="onbConnect">'+(native ? "🔗 Connect now" : "Got it!")+'</button>'+
+        '<div style="margin-top:10px"><button type="button" class="side link" id="onbSkip" style="background:none;border:none;color:var(--muted);cursor:pointer;font-weight:700;font-size:14px;padding:6px 12px;">'+(native ? "Maybe later" : "Close")+'</button></div></div>'+dots;
     }
     card.innerHTML = html;
     injectMascots(card);
-    if (onbStep===1){ var pv=el("#onbPeriod"); if(pv && state.allowance) pv.value=state.allowance.period||"weekly"; }
+    if (onbStep===1){ var pv=el("#onbPeriod"); if(pv && state && state.allowance) pv.value=state.allowance.period||"weekly"; }
+
     var next = document.getElementById("onbNext");
-    if (next) next.addEventListener("click", function(){
+    if (next) next.addEventListener("click", function(e){
+      if (e) e.preventDefault();
       if (onbStep===1){
         var amt = parseFloat((el("#onbAmount")||{}).value)||0;
         var per = (el("#onbPeriod")||{}).value||"weekly";
-        if (amt>0){ state.allowance = { amount:amt, period:per, reserve:(state.allowance&&state.allowance.reserve)||0, anchor: startOfToday() }; save(); }
+        if (amt>0 && state){ state.allowance = { amount:amt, period:per, reserve:(state.allowance&&state.allowance.reserve)||0, anchor: startOfToday() }; save(); }
       }
       onbStep++; renderOnb();
     });
-    var skip = document.getElementById("onbSkip"); if (skip) skip.addEventListener("click", function(){ onbStep++; if(onbStep>2){ finishOnboarding(); } else { renderOnb(); } });
-    var conn = document.getElementById("onbConnect"); if (conn) conn.addEventListener("click", function(){ finishOnboarding(); setTimeout(function(){ if(window.GcashSetup&&window.GcashSetup.open) GcashSetup.open(); }, 400); });
+
+    var skip = document.getElementById("onbSkip");
+    if (skip) skip.addEventListener("click", function(e){
+      if (e) e.preventDefault();
+      onbStep++;
+      if (onbStep > 2) {
+        finishOnboarding();
+      } else {
+        renderOnb();
+      }
+    });
+
+    var conn = document.getElementById("onbConnect");
+    if (conn) conn.addEventListener("click", function(e){
+      if (e) e.preventDefault();
+      finishOnboarding();
+      setTimeout(function(){
+        try {
+          if (window.GcashSetup && typeof window.GcashSetup.open === "function") {
+            window.GcashSetup.open();
+          }
+        } catch(err) {
+          console.error("[onboarding] GcashSetup open failed:", err);
+        }
+      }, 300);
+    });
   }
 
   // ---------- Toast ----------
@@ -3046,7 +3078,9 @@
   el("#addThreshBtn").addEventListener("click", addCustomThreshold);
   el("#resetThreshBtn").addEventListener("click", resetNotificationDefaults);
 
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); } });
+  // Onboarding scrim backdrop & ESC listener
+  if (el("#onb")) el("#onb").addEventListener("click", function(e){ if (e.target === this) finishOnboarding(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); hideOnboarding(); } });
   el("#clearAll").addEventListener("click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
   el("#syncBtn").addEventListener("click", syncFn);
