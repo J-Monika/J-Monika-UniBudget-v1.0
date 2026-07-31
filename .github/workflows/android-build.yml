@@ -123,14 +123,31 @@ jobs:
 
       - name: Setup Android SDK Components
         run: |
-          SDK_PATH="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -f "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-            "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;34.0.0" || true
+          set -euo pipefail
+          SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          echo "SDK_PATH=$SDK_PATH"
+          
+          # Locate sdkmanager dynamically
+          if [ -x "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER="$SDK_PATH/cmdline-tools/latest/bin/sdkmanager"
+          elif [ -x "$SDK_PATH/cmdline-tools/bin/sdkmanager" ]; then
+            SDKMANAGER="$SDK_PATH/cmdline-tools/bin/sdkmanager"
+          elif command -v sdkmanager >/dev/null 2>&1; then
+            SDKMANAGER="$(command -v sdkmanager)"
           else
-            yes | sdkmanager --licenses || true
-            sdkmanager "platforms;android-37" "build-tools;34.0.0" || true
+            echo "sdkmanager not found under SDK_PATH ($SDK_PATH) or in PATH"
+            exit 1
           fi
+          echo "Using sdkmanager: $SDKMANAGER"
+          
+          # Refresh repository index & accept licenses
+          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --update || true
+          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --licenses || true
+          
+          # Install required components
+          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-37" "build-tools;34.0.0" || true
+          
+          # Guarantee Gradle reads the correct SDK path
           echo "sdk.dir=$SDK_PATH" > android/local.properties
 
       - name: Build debug APK  (versionCode 10 / versionName "10.0")
