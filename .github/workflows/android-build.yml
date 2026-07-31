@@ -140,12 +140,12 @@ jobs:
           fi
           echo "Using sdkmanager: $SDKMANAGER"
           
-          # Refresh repository index & accept licenses
+          # Temporarily disable pipefail so 'yes' -> sdkmanager broken-pipe (SIGPIPE) won't abort the script
+          set +o pipefail
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --update || true
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --licenses || true
-          
-          # Install required components
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-35" "build-tools;34.0.0"
+          set -o pipefail
           
           # Verification Step: Fail-fast assertion
           if [ ! -d "$SDK_PATH/platforms/android-35" ]; then
