@@ -12,7 +12,7 @@
   var isPlaceholderKey =
     !cfg.SUPABASE_ANON_KEY ||
     cfg.SUPABASE_ANON_KEY.indexOf("YOUR-") !== -1 ||
-    cfg.SUPABASE_ANON_KEY.indexOf("sb_publishable_") === 0;
+    cfg.SUPABASE_ANON_KEY.indexOf("YOUR_") !== -1;
 
   var hasKeys =
     window.supabase &&
