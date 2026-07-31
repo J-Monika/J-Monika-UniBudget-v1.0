@@ -3040,51 +3040,56 @@
   }
 
   // ---------- Wire up ----------
-  el("#addForm").addEventListener("submit", addTxn);
-  el("#btnExp").addEventListener("click", function(){ setType("expense"); updateSuggest(); });
-  el("#btnInc").addEventListener("click", function(){ setType("income"); });
-  el("#desc").addEventListener("input", updateSuggest);
-  el("#applySuggest").addEventListener("click", applySuggest);
-  el("#currency").addEventListener("change", function(){ state.currency = this.value; save(); render(); });
-  el("#goalsBtn").addEventListener("click", openGoals);
-  el("#editGoals").addEventListener("click", openGoals);
-  el("#closeModal").addEventListener("click", closeGoals);
-  el("#cancelGoals").addEventListener("click", closeGoals);
-  el("#saveGoals").addEventListener("click", saveGoals);
-  el("#scrim").addEventListener("click", function(e){ if (e.target === this) closeGoals(); });
+  function safeOn(sel, event, handler) {
+    var elem = el(sel);
+    if (elem) elem.addEventListener(event, handler);
+  }
+
+  safeOn("#addForm", "submit", addTxn);
+  safeOn("#btnExp", "click", function(){ setType("expense"); updateSuggest(); });
+  safeOn("#btnInc", "click", function(){ setType("income"); });
+  safeOn("#desc", "input", updateSuggest);
+  safeOn("#applySuggest", "click", applySuggest);
+  safeOn("#currency", "change", function(){ state.currency = this.value; save(); render(); });
+  safeOn("#goalsBtn", "click", openGoals);
+  safeOn("#editGoals", "click", openGoals);
+  safeOn("#closeModal", "click", closeGoals);
+  safeOn("#cancelGoals", "click", closeGoals);
+  safeOn("#saveGoals", "click", saveGoals);
+  safeOn("#scrim", "click", function(e){ if (e.target === this) closeGoals(); });
   // Allowance (baon) modal
-  el("#editAllowance").addEventListener("click", openAllowance);
-  el("#baonBtn").addEventListener("click", openAllowance);
-  el("#alClose").addEventListener("click", closeAllowance);
-  el("#alCancel").addEventListener("click", closeAllowance);
-  el("#alSave").addEventListener("click", saveAllowance);
-  el("#alScrim").addEventListener("click", function(e){ if (e.target === this) closeAllowance(); });
+  safeOn("#editAllowance", "click", openAllowance);
+  safeOn("#baonBtn", "click", openAllowance);
+  safeOn("#alClose", "click", closeAllowance);
+  safeOn("#alCancel", "click", closeAllowance);
+  safeOn("#alSave", "click", saveAllowance);
+  safeOn("#alScrim", "click", function(e){ if (e.target === this) closeAllowance(); });
   // Rewards / achievements
-  el("#rewardsBtn").addEventListener("click", openAchievements);
-  el("#achClose").addEventListener("click", closeAchievements);
-  el("#achDone").addEventListener("click", closeAchievements);
-  el("#achScrim").addEventListener("click", function(e){ if (e.target === this) closeAchievements(); });
+  safeOn("#rewardsBtn", "click", openAchievements);
+  safeOn("#achClose", "click", closeAchievements);
+  safeOn("#achDone", "click", closeAchievements);
+  safeOn("#achScrim", "click", function(e){ if (e.target === this) closeAchievements(); });
 
   // Notification preferences modal
-  el("#notifBtn").addEventListener("click", openNotificationSettings);
-  el("#menuNotif").addEventListener("click", function(){ el("#menuPop").classList.remove("show"); openNotificationSettings(); });
-  el("#notifClose").addEventListener("click", closeNotificationSettings);
-  el("#notifDone").addEventListener("click", closeNotificationSettings);
-  el("#notifScrim").addEventListener("click", function(e){ if (e.target === this) closeNotificationSettings(); });
-  el("#notifMasterToggle").addEventListener("change", function(){
+  safeOn("#notifBtn", "click", openNotificationSettings);
+  safeOn("#menuNotif", "click", function(){ var m = el("#menuPop"); if (m) m.classList.remove("show"); openNotificationSettings(); });
+  safeOn("#notifClose", "click", closeNotificationSettings);
+  safeOn("#notifDone", "click", closeNotificationSettings);
+  safeOn("#notifScrim", "click", function(e){ if (e.target === this) closeNotificationSettings(); });
+  safeOn("#notifMasterToggle", "change", function(){
     state.notifications.enabled = this.checked;
     save(); render();
   });
-  el("#addThreshBtn").addEventListener("click", addCustomThreshold);
-  el("#resetThreshBtn").addEventListener("click", resetNotificationDefaults);
+  safeOn("#addThreshBtn", "click", addCustomThreshold);
+  safeOn("#resetThreshBtn", "click", resetNotificationDefaults);
 
   // Onboarding scrim backdrop & ESC listener
   if (el("#onb")) el("#onb").addEventListener("click", function(e){ if (e.target === this) finishOnboarding(); });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); hideOnboarding(); } });
-  el("#clearAll").addEventListener("click", clearAll);
+  safeOn("#clearAll", "click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
-  el("#syncBtn").addEventListener("click", syncFn);
-  el("#syncNow").addEventListener("click", syncFn);
+  safeOn("#syncBtn", "click", syncFn);
+  safeOn("#syncNow", "click", syncFn);
 
   // ---------- Multi-wallet auto-ingest (GCash · Maya · ShopeePay · GrabPay) ----------
   // Called by the native Android listener with a raw notification/SMS body.
