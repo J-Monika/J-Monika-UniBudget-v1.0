@@ -125,8 +125,8 @@ jobs:
         run: |
           set -euo pipefail
           SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-          echo "SDK_PATH=$SDK_PATH"
-          
+          echo "SDK_PATH=$SDK_PATH"    
+
           # Locate sdkmanager dynamically
           if [ -x "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" ]; then
             SDKMANAGER="$SDK_PATH/cmdline-tools/latest/bin/sdkmanager"
@@ -144,8 +144,14 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --update || true
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --licenses || true
           
-          # Install required components
-          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-37" "build-tools;34.0.0" || true
+          # Crucial Fix: Explicitly fail if installation fails (DO NOT append '|| true')
+          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-37" "build-tools;34.0.0"
+          
+          # Verification Step: Fail-fast assertion
+          if [ ! -d "$SDK_PATH/platforms/android-37" ]; then
+            echo "ERROR: platforms;android-37 failed to install properly."
+            exit 1
+          fi
           
           # Guarantee Gradle reads the correct SDK path
           echo "sdk.dir=$SDK_PATH" > android/local.properties
