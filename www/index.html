@@ -3082,6 +3082,157 @@
     toast("Notification thresholds reset to default ✓");
   }
 
+  // ---------- 50/30/20 Budget Framework Modal Engine ----------
+  function normalizeFramework(fw) {
+    if (!fw || typeof fw !== "object") fw = {};
+    if (typeof fw.income !== "number" || isNaN(fw.income) || fw.income < 0) {
+      fw.income = (state && state.allowance && state.allowance.amount) ? state.allowance.amount : 5000;
+    }
+    if (typeof fw.needsPct !== "number" || isNaN(fw.needsPct)) fw.needsPct = 50;
+    if (typeof fw.wantsPct !== "number" || isNaN(fw.wantsPct)) fw.wantsPct = 30;
+    if (typeof fw.savePct !== "number" || isNaN(fw.savePct)) fw.savePct = 20;
+    return fw;
+  }
+
+  function updateFrameworkCalc() {
+    if (!state) return;
+    state.framework = normalizeFramework(state.framework);
+
+    var inc = parseFloat((el("#fwIncome") || {}).value);
+    if (isNaN(inc) || inc < 0) inc = 0;
+
+    var needs = parseFloat((el("#fwNeedsPct") || {}).value);
+    if (isNaN(needs)) needs = 0;
+    var wants = parseFloat((el("#fwWantsPct") || {}).value);
+    if (isNaN(wants)) wants = 0;
+    var save = parseFloat((el("#fwSavePct") || {}).value);
+    if (isNaN(save)) save = 0;
+
+    var totalPct = Math.round(needs + wants + save);
+    var eSym = CURRENCIES[state.currency || "PHP"] || "₱";
+
+    var needsAmt = inc * (needs / 100);
+    var wantsAmt = inc * (wants / 100);
+    var saveAmt = inc * (save / 100);
+
+    if (el("#fwNeedsAmt")) el("#fwNeedsAmt").textContent = eSym + needsAmt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (el("#fwWantsAmt")) el("#fwWantsAmt").textContent = eSym + wantsAmt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (el("#fwSaveAmt")) el("#fwSaveAmt").textContent = eSym + saveAmt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    var sumVal = el("#fwSumVal");
+    var saveBtn = el("#fwSave");
+    if (sumVal) {
+      sumVal.textContent = totalPct + "%";
+      if (totalPct === 100) {
+        sumVal.className = "fw-sum-val ok";
+        if (saveBtn) saveBtn.disabled = false;
+      } else {
+        sumVal.className = "fw-sum-val bad";
+        if (saveBtn) saveBtn.disabled = true;
+      }
+    }
+
+    // Allocation bar widths
+    if (el("#fwBandNeeds")) el("#fwBandNeeds").style.width = Math.max(0, Math.min(100, needs)) + "%";
+    if (el("#fwBandWants")) el("#fwBandWants").style.width = Math.max(0, Math.min(100, wants)) + "%";
+    if (el("#fwBandSave")) el("#fwBandSave").style.width = Math.max(0, Math.min(100, save)) + "%";
+
+    // SVG Donut ring angles calculation
+    if (el("#fwDonutPct")) el("#fwDonutPct").textContent = totalPct + "%";
+
+    var cNeeds = el("#fwDonutNeeds");
+    var cWants = el("#fwDonutWants");
+    var cSave = el("#fwDonutSave");
+
+    if (cNeeds) {
+      cNeeds.setAttribute("stroke-dasharray", needs + " " + Math.max(0, 100 - needs));
+      cNeeds.setAttribute("stroke-dashoffset", "25");
+    }
+    if (cWants) {
+      cWants.setAttribute("stroke-dasharray", wants + " " + Math.max(0, 100 - wants));
+      cWants.setAttribute("stroke-dashoffset", String(25 - needs));
+    }
+    if (cSave) {
+      cSave.setAttribute("stroke-dasharray", save + " " + Math.max(0, 100 - save));
+      cSave.setAttribute("stroke-dashoffset", String(25 - (needs + wants)));
+    }
+
+    // Actual vs Target Breakdown from transactions
+    var actNeeds = 0, actWants = 0, actSave = 0;
+    activeTxns().forEach(function(t) {
+      if (t.type === "expense") {
+        var cat = t.cat || "Other";
+        if (cat === "Fun & Social" || cat === "Shopping & Gadgets") {
+          actWants += t.amount;
+        } else if (cat === "Savings & Investments") {
+          actSave += t.amount;
+        } else {
+          actNeeds += t.amount;
+        }
+      }
+    });
+
+    if (el("#fwActNeeds")) el("#fwActNeeds").textContent = eSym + Math.round(actNeeds).toLocaleString() + " / " + eSym + Math.round(needsAmt).toLocaleString() + " (" + needs + "%)";
+    if (el("#fwActWants")) el("#fwActWants").textContent = eSym + Math.round(actWants).toLocaleString() + " / " + eSym + Math.round(wantsAmt).toLocaleString() + " (" + wants + "%)";
+    if (el("#fwActSave")) el("#fwActSave").textContent = eSym + Math.round(actSave).toLocaleString() + " / " + eSym + Math.round(saveAmt).toLocaleString() + " (" + save + "%)";
+  }
+
+  function openFramework() {
+    if (!state) return;
+    state.framework = normalizeFramework(state.framework);
+    var fw = state.framework;
+
+    if (el("#fwIncome")) el("#fwIncome").value = fw.income;
+    if (el("#fwNeedsPct")) el("#fwNeedsPct").value = fw.needsPct;
+    if (el("#fwWantsPct")) el("#fwWantsPct").value = fw.wantsPct;
+    if (el("#fwSavePct")) el("#fwSavePct").value = fw.savePct;
+    if (el("#fwIncSym")) el("#fwIncSym").textContent = CURRENCIES[state.currency || "PHP"] || "₱";
+
+    updateFrameworkCalc();
+    el("#fwScrim").classList.add("show");
+  }
+
+  function closeFramework() {
+    el("#fwScrim").classList.remove("show");
+  }
+
+  function resetFramework() {
+    if (el("#fwNeedsPct")) el("#fwNeedsPct").value = 50;
+    if (el("#fwWantsPct")) el("#fwWantsPct").value = 30;
+    if (el("#fwSavePct")) el("#fwSavePct").value = 20;
+    updateFrameworkCalc();
+    toast("Reset framework allocations to 50/30/20 defaults ✓");
+  }
+
+  function saveFramework() {
+    var inc = parseFloat((el("#fwIncome") || {}).value);
+    if (isNaN(inc) || inc < 0) inc = 0;
+    var needs = parseFloat((el("#fwNeedsPct") || {}).value);
+    if (isNaN(needs)) needs = 0;
+    var wants = parseFloat((el("#fwWantsPct") || {}).value);
+    if (isNaN(wants)) wants = 0;
+    var savePct = parseFloat((el("#fwSavePct") || {}).value);
+    if (isNaN(savePct)) savePct = 0;
+
+    var totalPct = Math.round(needs + wants + savePct);
+    if (totalPct !== 100) {
+      toast("❌ Total allocation percentage must equal 100%");
+      return;
+    }
+
+    state.framework = {
+      income: inc,
+      needsPct: needs,
+      wantsPct: wants,
+      savePct: savePct
+    };
+
+    save();
+    render();
+    closeFramework();
+    toast("📊 50/30/20 Budget Framework saved!");
+  }
+
   // ---- Confetti + celebration ----
   function confettiBurst(){
     var c = el("#confetti"); if(!c) return;
@@ -3306,11 +3457,25 @@
     save(); render();
   });
   safeOn("#addThreshBtn", "click", addCustomThreshold);
-  safeOn("#resetThreshBtn", "click", resetNotificationDefaults);
+  // 50/30/20 Framework modal
+  safeOn("#frameworkBtn", "click", openFramework);
+  safeOn("#menuFramework", "click", function(){ var m = el("#menuPop"); if (m) m.classList.remove("show"); openFramework(); });
+  safeOn("#fwClose", "click", closeFramework);
+  safeOn("#fwReset", "click", resetFramework);
+  safeOn("#fwSave", "click", saveFramework);
+  safeOn("#fwScrim", "click", function(e){ if (e.target === this) closeFramework(); });
+
+  ["#fwIncome", "#fwNeedsPct", "#fwWantsPct", "#fwSavePct"].forEach(function(sel) {
+    var elem = el(sel);
+    if (elem) {
+      elem.addEventListener("input", updateFrameworkCalc);
+      elem.addEventListener("change", updateFrameworkCalc);
+    }
+  });
 
   // Onboarding scrim backdrop & ESC listener
   if (el("#onb")) el("#onb").addEventListener("click", function(e){ if (e.target === this) finishOnboarding(); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); hideOnboarding(); } });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); closeFramework(); hideOnboarding(); } });
   safeOn("#clearAll", "click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
   safeOn("#syncBtn", "click", syncFn);

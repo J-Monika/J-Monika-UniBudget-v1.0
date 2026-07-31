@@ -119,4 +119,44 @@ console.log("▶ Running UniBudget Gamification Engine Unit Tests...");
   console.log("  ✓ Test 6 Passed: Dynamic badge percentage & completion calculation");
 }
 
+// Test 7: 50/30/20 Budget Framework Calculation & 100% Validation
+{
+  function validateFrameworkAllocations(income, needsPct, wantsPct, savePct) {
+    const inc = Math.max(0, Number(income) || 0);
+    const n = Number(needsPct) || 0;
+    const w = Number(wantsPct) || 0;
+    const s = Number(savePct) || 0;
+    const total = Math.round(n + w + s);
+    return {
+      isValid: total === 100,
+      totalPct: total,
+      needsAmount: inc * (n / 100),
+      wantsAmount: inc * (w / 100),
+      saveAmount: inc * (s / 100)
+    };
+  }
+
+  // Standard 50/30/20 allocation on ₱10,000 income
+  const std = validateFrameworkAllocations(10000, 50, 30, 20);
+  assert.strictEqual(std.isValid, true);
+  assert.strictEqual(std.totalPct, 100);
+  assert.strictEqual(std.needsAmount, 5000);
+  assert.strictEqual(std.wantsAmount, 3000);
+  assert.strictEqual(std.saveAmount, 2000);
+
+  // Custom 80/10/10 allocation on ₱5,000 income
+  const custom = validateFrameworkAllocations(5000, 80, 10, 10);
+  assert.strictEqual(custom.isValid, true);
+  assert.strictEqual(custom.needsAmount, 4000);
+  assert.strictEqual(custom.wantsAmount, 500);
+  assert.strictEqual(custom.saveAmount, 500);
+
+  // Invalid total (70/10/10 = 90%)
+  const invalid = validateFrameworkAllocations(5000, 70, 10, 10);
+  assert.strictEqual(invalid.isValid, false);
+  assert.strictEqual(invalid.totalPct, 90);
+
+  console.log("  ✓ Test 7 Passed: 50/30/20 Budget Framework calculations and 100% total validation rules");
+}
+
 console.log("\n🎉 ALL GAMIFICATION UNIT TESTS PASSED SUCCESSFULLY!\n");
