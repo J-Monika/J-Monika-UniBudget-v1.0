@@ -3244,26 +3244,38 @@
   var Auth = {
     async signup(name, email, pass){
       email = email.toLowerCase().trim();
-      if (cloudOn) return Cloud.signup(name, email, pass);
+      if (cloudOn) {
+        var uRes = await Cloud.signup(name, email, pass);
+        Auth.saveSession(uRes);
+        return uRes;
+      }
       var users = readUsers();
       if (users[email]) throw new Error("An account with this email already exists. Try logging in.");
       var salt = randSalt();
       users[email] = { name: name || email.split("@")[0], salt: salt, hash: await hashPw(pass, salt) };
       writeUsers(users);
-      return { email: email, name: users[email].name };
+      var uRes = { email: email, name: users[email].name };
+      Auth.saveSession(uRes);
+      return uRes;
     },
     async login(email, pass){
       email = email.toLowerCase().trim();
-      if (cloudOn) return Cloud.login(email, pass);
+      if (cloudOn) {
+        var uRes = await Cloud.login(email, pass);
+        Auth.saveSession(uRes);
+        return uRes;
+      }
       var users = readUsers();
       var u = users[email];
       if (!u) throw new Error("No account found for that email. Sign up first.");
       var h = await hashPw(pass, u.salt);
       if (h !== u.hash) throw new Error("Incorrect password. Please try again.");
-      return { email: email, name: u.name };
+      var uRes = { email: email, name: u.name };
+      Auth.saveSession(uRes);
+      return uRes;
     },
     logout(){ localStorage.removeItem(SESSION_KEY); if (cloudOn && Cloud.logout) Cloud.logout(); },
-    saveSession(user){ localStorage.setItem(SESSION_KEY, JSON.stringify(user)); },
+    saveSession(user){ if (user && user.email) localStorage.setItem(SESSION_KEY, JSON.stringify(user)); },
     getSession(){ try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; } }
   };
 

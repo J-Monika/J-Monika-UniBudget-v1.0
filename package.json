@@ -4,7 +4,7 @@
   "description": "UniBudget — student budget tracker with GCash auto-detection",
   "private": true,
   "scripts": {
-    "test": "node tests/notifications.test.js",
+    "test": "node tests/cloud-sync-auth.test.js && node tests/notifications.test.js && node tests/gcash-dedup.test.js && node tests/peer-ledger.test.js && node tests/transaction-inspector.test.js && node tests/gamification.test.js",
     "sync": "cap sync android",
     "open": "cap open android",
     "build:apk": "cd android && ./gradlew assembleDebug"

@@ -26,12 +26,22 @@
   function sessionEmail() { try { return JSON.parse(localStorage.getItem("unibudget:session")).email; } catch (e) { return null; } }
   function readCache(email) { try { return JSON.parse(localStorage.getItem(dataKey(email))); } catch (e) { return null; } }
   function writeCache(email, s) { localStorage.setItem(dataKey(email), JSON.stringify(s)); }
-  function markSynced(ok) {
+  function markSynced(ok, details) {
     var d = document.getElementById("syncDot"), l = document.getElementById("syncLabel");
     if (d) d.classList.toggle("dirty", !ok);
-    if (l) l.textContent = ok ? "Synced" : "Sync Now";
+    if (l) l.textContent = ok ? "Synced" : (details || "Sync Now");
   }
-  async function currentUser() { try { return (await sb.auth.getUser()).data.user; } catch (e) { return null; } }
+  async function currentUser() {
+    try {
+      var u = (await sb.auth.getUser()).data.user;
+      if (u) return u;
+    } catch (e) {}
+    try {
+      var sess = (await sb.auth.getSession()).data.session;
+      if (sess && sess.user) return sess.user;
+    } catch (e) {}
+    return null;
+  }
 
   function friendly(msg) {
     msg = String(msg || "");
@@ -40,6 +50,13 @@
     if (/email.*not.*confirm/i.test(msg)) return "Please confirm your email first (check your inbox).";
     if (/rate limit/i.test(msg)) return "Too many attempts. Please wait a minute and retry.";
     return msg || "Something went wrong. Please try again.";
+  }
+
+  function safeTs(val, fallback) {
+    if (!val) return fallback || Date.now();
+    var d = new Date(val);
+    var t = d.getTime();
+    return isNaN(t) ? (fallback || Date.now()) : t;
   }
 
   // ---- (de)serialization between local transaction objects and DB rows ----
@@ -58,17 +75,20 @@
     };
   }
   function txnFromRow(r) {
+    var occ = safeTs(r.occurred_at, Date.now());
+    var upd = safeTs(r.updated_at, occ);
+    var cap = r.captured_at ? safeTs(r.captured_at, null) : null;
     return {
-      id: r.id, amount: Number(r.amount), type: r.type,
+      id: r.id, amount: Number(r.amount) || 0, type: r.type,
       cat: r.category || "Other", desc: r.description || "",
-      ts: new Date(r.occurred_at).getTime(),
-      updated_at: new Date(r.updated_at).getTime(),
+      ts: occ,
+      updated_at: upd,
       deleted: !!r.deleted,
       source: r.source_type && r.source_type.indexOf("AUTOMATED") === 0 ? "gcash-auto" : "manual",
       source_type: r.source_type || "MANUAL",
       source_app_or_sender: r.source_app_or_sender || null,
       raw_message_text: r.raw_message_text || null,
-      captured_at: r.captured_at ? new Date(r.captured_at).getTime() : null
+      captured_at: cap
     };
   }
 
@@ -87,16 +107,26 @@
     };
   }
   function peerLedgerFromRow(r) {
+    var cr = safeTs(r.created_at, Date.now());
+    var upd = safeTs(r.updated_at, cr);
+    var due = r.due_date ? safeTs(r.due_date, null) : null;
     return {
       id: r.id, type: r.type, counterpartyName: r.counterparty_name,
-      amount: Number(r.amount), currency: r.currency || "PHP",
+      amount: Number(r.amount) || 0, currency: r.currency || "PHP",
       description: r.description || "", status: r.status,
-      settledAmount: Number(r.settled_amount),
-      dueDate: r.due_date ? new Date(r.due_date).getTime() : null,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
+      settledAmount: Number(r.settled_amount) || 0,
+      dueDate: due,
+      createdAt: cr,
+      updatedAt: upd,
       deleted: !!r.deleted
     };
+  }
+
+  function isOnline() {
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.onLine === "boolean") return navigator.onLine;
+    } catch (e) {}
+    return true;
   }
 
   // ---- PUSH: upsert rows changed since the last successful push ----
@@ -106,13 +136,14 @@
     pushTimer = setTimeout(function () { flush(state); }, 700);
   }
   async function flush(stateMaybe) {
-    if (pushing || !navigator.onLine) { if (!navigator.onLine) markSynced(false); return; }
+    if (pushing || !isOnline()) { if (!isOnline()) markSynced(false, "Offline"); return; }
     pushing = true;
     try {
       var u = await currentUser(); if (!u) return;
       var email = sessionEmail(); if (!email) return;
       var state = stateMaybe || readCache(email); if (!state) return;
 
+      console.log("[Cloud Sync] Flushing local changes for user " + email + "...");
       var wmKey = pushWM(email);
       var lastPush = Number(localStorage.getItem(wmKey) || 0);
       var changedTxns = (state.txns || []).filter(function (t) { return (t.updated_at || t.ts || 0) > lastPush; });
@@ -137,38 +168,43 @@
       var maxPeer = changedPeer.reduce(function (a, p) { return Math.max(a, p.updatedAt || p.createdAt || 0); }, lastPush);
       var maxU = Math.max(maxTxn, maxPeer);
       localStorage.setItem(wmKey, String(maxU));
+      console.log("[Cloud Sync] Push completed successfully.");
       markSynced(true);
     } catch (e) {
-      markSynced(false);   // stays dirty → retried on next save, 'online', or interval
+      console.warn("[Cloud Sync] Push failed (queued for retry):", e.message || e);
+      markSynced(false, "Sync Pending");   // stays dirty → retried on next save, 'online', or interval
     } finally { pushing = false; }
   }
 
   // ---- PULL: merge rows updated since the last pull (LWW) ----
   var pulling = false;
-  async function pull() {
-    if (pulling || !navigator.onLine) return false;
+  async function pull(targetEmail) {
+    if (pulling) { console.warn("[Cloud Sync] Pull skipped: Sync already in progress."); return false; }
+    if (!isOnline()) { console.warn("[Cloud Sync] Pull skipped: Device is offline."); return false; }
     pulling = true;
     var changedLocal = false;
     try {
-      var u = await currentUser(); if (!u) return false;
-      var email = sessionEmail(); if (!email) return false;
+      var u = await currentUser(); if (!u) { console.warn("[Cloud Sync] Pull skipped: No authenticated user session."); return false; }
+      var email = targetEmail || sessionEmail(); if (!email) { console.warn("[Cloud Sync] Pull skipped: No active session email."); return false; }
 
+      console.log("[Cloud Sync] Pulling remote updates for " + email + "...");
       var wmKey = pullWM(email);
       var lastPull = Number(localStorage.getItem(wmKey) || 0);
+      var lastIso = isNaN(lastPull) ? new Date(0).toISOString() : new Date(lastPull).toISOString();
       var res = await sb.from("transactions").select("*")
-        .eq("user_id", u.id).gt("updated_at", new Date(lastPull).toISOString());
+        .eq("user_id", u.id).gt("updated_at", lastIso);
       if (res.error) throw res.error;
 
       var resPeer = await sb.from("peer_ledger").select("*")
-        .eq("user_id", u.id).gt("updated_at", new Date(lastPull).toISOString());
+        .eq("user_id", u.id).gt("updated_at", lastIso);
       if (resPeer.error) throw resPeer.error;
 
       var cache = readCache(email) || { currency: "PHP", limits: {}, txns: [], peerLedger: [] };
       var byId = {}; (cache.txns || []).forEach(function (t) { byId[t.id] = t; });
-      var maxU = lastPull;
+      var maxU = isNaN(lastPull) ? 0 : lastPull;
       (res.data || []).forEach(function (r) {
         var incoming = txnFromRow(r);
-        maxU = Math.max(maxU, incoming.updated_at);
+        maxU = Math.max(maxU, incoming.updated_at || 0);
         var cur = byId[incoming.id];
         if (!cur || incoming.updated_at >= (cur.updated_at || cur.ts || 0)) { byId[incoming.id] = incoming; changedLocal = true; }
       });
@@ -176,7 +212,7 @@
       var byIdPeer = {}; (cache.peerLedger || []).forEach(function (p) { byIdPeer[p.id] = p; });
       (resPeer.data || []).forEach(function (r) {
         var incoming = peerLedgerFromRow(r);
-        maxU = Math.max(maxU, incoming.updatedAt);
+        maxU = Math.max(maxU, incoming.updatedAt || 0);
         var cur = byIdPeer[incoming.id];
         if (!cur || incoming.updatedAt >= (cur.updatedAt || cur.createdAt || 0)) { byIdPeer[incoming.id] = incoming; changedLocal = true; }
       });
@@ -189,18 +225,30 @@
       }
       cache.txns = Object.keys(byId).map(function (k) { return byId[k]; });
       cache.peerLedger = Object.keys(byIdPeer).map(function (k) { return byIdPeer[k]; });
+      console.log("[Cloud Sync] Writing cache for email " + email + ", txns count: " + cache.txns.length);
       writeCache(email, cache);
       localStorage.setItem(wmKey, String(maxU));
+      console.log("[Cloud Sync] Pull succeeded. Local state updated: " + changedLocal);
+      markSynced(true);
       if (changedLocal && window.UniBudget && window.UniBudget.reload) window.UniBudget.reload();
-    } catch (e) { /* offline — cache stays authoritative */ } finally { pulling = false; }
+    } catch (e) {
+      console.warn("[Cloud Sync] Pull failed (offline cache authoritative):", e.message || e);
+      markSynced(false, "Sync Pending");
+    } finally { pulling = false; }
     return changedLocal;
   }
 
   async function hydrate(email) {
     // Fresh pull of everything into the local cache before the app reads it.
+    console.log("[Cloud Sync] Hydrating local cache for user " + email + "...");
     localStorage.setItem(pullWM(email), "0");
     localStorage.setItem(pushWM(email), "0");
-    await pull();
+    try {
+      await pull(email);
+    } catch (e) {
+      console.warn("[Cloud Sync] Hydrate pull warning (completing authentication in offline fallback mode):", e.message || e);
+      markSynced(false, "Sync Pending");
+    }
   }
 
   window.Cloud = {
@@ -208,6 +256,7 @@
     client: sb,
     async signup(name, email, pass) {
       email = email.toLowerCase().trim();
+      console.log("[Cloud Auth] Attempting sign up for " + email);
       var r = await sb.auth.signUp({ email: email, password: pass, options: { data: { name: name } } });
       if (r.error) throw new Error(friendly(r.error.message));
       if (!r.data.session) throw new Error("Account created — check your email to confirm it, then log in.");
@@ -216,6 +265,7 @@
     },
     async login(email, pass) {
       email = email.toLowerCase().trim();
+      console.log("[Cloud Auth] Attempting login for " + email);
       var r = await sb.auth.signInWithPassword({ email: email, password: pass });
       if (r.error) throw new Error(friendly(r.error.message));
       var u = r.data.user;
@@ -223,7 +273,10 @@
       await hydrate(email);
       return { email: email, name: name };
     },
-    async logout() { try { await sb.auth.signOut(); } catch (e) {} },
+    async logout() {
+      console.log("[Cloud Auth] Logging out user.");
+      try { await sb.auth.signOut(); } catch (e) {}
+    },
     pushState: pushState,
     pull: pull
   };
@@ -231,7 +284,8 @@
   // Background sync triggers (offline outbox retry + live pull)
   window.addEventListener("online", function () { flush(); pull(); });
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { pull(); flush(); } });
-  setInterval(function () { if (navigator.onLine && sessionEmail()) { pull(); flush(); } }, 60000);
+  setInterval(function () { if (isOnline() && sessionEmail()) { pull(); flush(); } }, 60000);
   // Initial catch-up for an already-signed-in user on cold start.
   if (sessionEmail()) setTimeout(pull, 1500);
 })();
+
