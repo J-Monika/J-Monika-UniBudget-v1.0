@@ -144,12 +144,12 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --update || true
           yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --licenses || true
           
-          # Crucial Fix: Explicitly fail if installation fails (DO NOT append '|| true')
-          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-37" "build-tools;34.0.0"
+          # Install required components
+          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-35" "build-tools;34.0.0"
           
           # Verification Step: Fail-fast assertion
-          if [ ! -d "$SDK_PATH/platforms/android-37" ]; then
-            echo "ERROR: platforms;android-37 failed to install properly."
+          if [ ! -d "$SDK_PATH/platforms/android-35" ]; then
+            echo "ERROR: platforms;android-35 failed to install properly."
             exit 1
           fi
           
@@ -169,7 +169,6 @@ jobs:
             --no-daemon \
             --stacktrace \
             -Dorg.gradle.java.home="$JAVA_HOME" \
-            -Dandroid.suppressUnsupportedCompileSdk=37 \
             -Dandroid.builder.sdkDownload=true
           #   ↑ Overrides org.gradle.java.home in gradle.properties so the
           #     Linux CI runner uses Temurin 21 instead of the local Windows path.
