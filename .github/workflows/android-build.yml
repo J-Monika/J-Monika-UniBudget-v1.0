@@ -102,10 +102,10 @@ jobs:
       # and BEFORE any ./gradlew invocation.
       # ──────────────────────────────────────────────────────────────────────
       - name: Sync Capacitor (regenerate native files & web assets)
-        run: npx cap sync android
+        run: node node_modules/@capacitor/cli/bin/capacitor sync android
 
       - name: Cache Gradle wrapper & caches
-        uses: actions/cache@v4   # Node 20 runtime ✔
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -123,21 +123,13 @@ jobs:
       - name: Set Android SDK path
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      # ── KEY FIX ───────────────────────────────────────────────────────────
-      # android/gradle.properties (a tracked git file) contains:
-      #   org.gradle.java.home=C:\Users\MRMD\jdk21\jdk-21.0.11+10   ← Windows only!
-      # We do NOT patch the tracked file (that would dirty the workspace and
-      # cause git to fail on post-checkout cleanup with exit 128).
-      #
-      # Instead we use two overrides that take priority over the file:
-      #   GRADLE_OPTS  → overrides org.gradle.jvmargs (-Xmx3g fits CI RAM)
-      #   -Dorg.gradle.java.home → overrides the JDK path with $JAVA_HOME
-      #     set by setup-java above (Temurin 21 on Linux).
-      # ──────────────────────────────────────────────────────────────────────
+      - name: Accept Android SDK licenses & Install SDK 37
+        run: |
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-37" "build-tools;35.0.0" || true
+
       - name: Build debug APK  (versionCode 10 / versionName "10.0")
         env:
-          # Override org.gradle.jvmargs from gradle.properties.
-          # 3 GB fits GitHub's 7 GB free runner (leaves headroom for Android tools).
           GRADLE_OPTS: >-
             -Xmx3g
             -XX:MaxMetaspaceSize=512m
@@ -148,8 +140,9 @@ jobs:
           ./gradlew assembleDebug \
             --no-daemon \
             --stacktrace \
-            --info \
-            -Dorg.gradle.java.home="$JAVA_HOME"
+            -Dorg.gradle.java.home="$JAVA_HOME" \
+            -Dandroid.suppressUnsupportedCompileSdk=37 \
+            -Dandroid.builder.sdkDownload=true
           #   ↑ Overrides org.gradle.java.home in gradle.properties so the
           #     Linux CI runner uses Temurin 21 instead of the local Windows path.
 
