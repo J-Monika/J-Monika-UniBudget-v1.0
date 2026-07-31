@@ -257,4 +257,50 @@ console.log("▶ Running UniBudget Peer Ledger Unit Tests...");
   console.log("  ✓ Test 10 Passed: Search, filter criteria, overdue detection, and sort ordering");
 }
 
+// Test 11: Partial Payment Tracking System & History Logging
+{
+  const state = { currency: "PHP", peerLedger: [] };
+  const entry = PeerLedger.addEntry(state, {
+    type: "UTANG_GIVEN",
+    counterpartyName: "Emilio Aguinaldo",
+    amount: 1000,
+    description: "Group project materials"
+  });
+
+  // Check initial calculations
+  assert.strictEqual(PeerLedger.calculateBalanceDue(entry), 1000);
+  assert.strictEqual(PeerLedger.determinePaymentStatus(entry.amount, entry.settledAmount), "UNSETTLED");
+
+  // Partial Payment 1: 400 via GCash
+  const res1 = PeerLedger.settleEntry(state, entry.id, 400, true, "GCash", "Ref #GC12345");
+  assert.strictEqual(res1.entry.settledAmount, 400);
+  assert.strictEqual(PeerLedger.calculateBalanceDue(res1.entry), 600);
+  assert.strictEqual(res1.entry.status, "PARTIALLY_SETTLED");
+  assert.strictEqual(res1.entry.settlementHistory.length, 1);
+  assert.strictEqual(res1.entry.settlementHistory[0].amount, 400);
+  assert.strictEqual(res1.entry.settlementHistory[0].paymentMethod, "GCash");
+  assert.strictEqual(res1.entry.settlementHistory[0].notes, "Ref #GC12345");
+
+  // Partial Payment 2: 600 via Cash (Completes full payment)
+  const res2 = PeerLedger.settleEntry(state, entry.id, 600, true, "Cash", "Final payment in person");
+  assert.strictEqual(res2.entry.settledAmount, 1000);
+  assert.strictEqual(PeerLedger.calculateBalanceDue(res2.entry), 0);
+  assert.strictEqual(res2.entry.status, "SETTLED");
+  assert.strictEqual(res2.entry.settlementHistory.length, 2);
+  assert.strictEqual(res2.entry.settlementHistory[1].paymentMethod, "Cash");
+
+  // Attempt payment on fully settled entry -> Should throw error
+  assert.throws(() => {
+    PeerLedger.settleEntry(state, entry.id, 100, false, "Cash");
+  }, /already fully settled/i);
+
+  // Attempt <= 0 payment -> Should throw error
+  const entry2 = PeerLedger.addEntry(state, { type: "UTANG_TAKEN", counterpartyName: "Andres", amount: 500 });
+  assert.throws(() => {
+    PeerLedger.settleEntry(state, entry2.id, -50, false);
+  }, /greater than 0/i);
+
+  console.log("  ✓ Test 11 Passed: Partial payment tracking, settlement history logging, and validation rules");
+}
+
 console.log("\n🎉 ALL PEER LEDGER UNIT TESTS PASSED SUCCESSFULLY!\n");

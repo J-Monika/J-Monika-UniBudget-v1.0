@@ -31,6 +31,30 @@
 
   var PeerLedger = {
     /**
+     * Calculates the remaining balance due for an entry.
+     * @param {Object} entry
+     * @returns {number}
+     */
+    calculateBalanceDue: function (entry) {
+      if (!entry) return 0;
+      var total = typeof entry.amount === "number" ? entry.amount : Number(entry.amount) || 0;
+      var paid = typeof entry.settledAmount === "number" ? entry.settledAmount : Number(entry.settledAmount) || 0;
+      return Math.max(0, Math.round((total - paid) * 100) / 100);
+    },
+
+    /**
+     * Determines payment status dynamically based on total and paid amounts.
+     * @param {number} total
+     * @param {number} paid
+     * @returns {PeerLedgerStatus}
+     */
+    determinePaymentStatus: function (total, paid) {
+      if (!paid || paid <= 0) return "UNSETTLED";
+      if (paid >= total) return "SETTLED";
+      return "PARTIALLY_SETTLED";
+    },
+
+    /**
      * Ensures state has a valid peerLedger array.
      * @param {Object} state
      */
@@ -39,15 +63,15 @@
       if (!Array.isArray(state.peerLedger)) {
         state.peerLedger = [];
       }
+      var self = this;
       state.peerLedger.forEach(function (entry) {
         if (!entry.id) entry.id = generateId();
         if (typeof entry.amount !== "number") entry.amount = Number(entry.amount) || 0;
         if (typeof entry.settledAmount !== "number") entry.settledAmount = Number(entry.settledAmount) || 0;
         if (!entry.status) {
-          if (entry.settledAmount >= entry.amount) entry.status = "SETTLED";
-          else if (entry.settledAmount > 0) entry.status = "PARTIALLY_SETTLED";
-          else entry.status = "UNSETTLED";
+          entry.status = self.determinePaymentStatus(entry.amount, entry.settledAmount);
         }
+        if (!Array.isArray(entry.settlementHistory)) entry.settlementHistory = [];
         if (typeof entry.createdAt !== "number") entry.createdAt = Date.now();
         if (typeof entry.updatedAt !== "number") entry.updatedAt = entry.createdAt;
         if (typeof entry.deleted !== "boolean") entry.deleted = false;
@@ -86,6 +110,7 @@
         description: (input.description || "").trim(),
         status: "UNSETTLED",
         settledAmount: 0,
+        settlementHistory: [],
         dueDate: input.dueDate ? new Date(input.dueDate).getTime() : null,
         createdAt: now,
         updatedAt: now,
@@ -103,9 +128,11 @@
      * @param {string} entryId
      * @param {number} payAmount
      * @param {boolean} createBudgetTransaction
-     * @returns {{ entry: PeerLedgerEntry, createdTxn: Object|null }}
+     * @param {string} [paymentMethod]
+     * @param {string} [notes]
+     * @returns {{ entry: PeerLedgerEntry, createdTxn: Object|null, paymentRecord: Object }}
      */
-    settleEntry: function (state, entryId, payAmount, createBudgetTransaction) {
+    settleEntry: function (state, entryId, payAmount, createBudgetTransaction, paymentMethod, notes) {
       this.normalizeState(state);
       var entry = null;
       for (var i = 0; i < state.peerLedger.length; i++) {
@@ -118,14 +145,14 @@
         throw new Error("Entry not found.");
       }
 
-      var remaining = Math.max(0, entry.amount - entry.settledAmount);
-      if (remaining <= 0) {
+      var remaining = this.calculateBalanceDue(entry);
+      if (remaining <= 0 || entry.status === "SETTLED") {
         throw new Error("Entry is already fully settled.");
       }
 
       var amountToSettle = parseFloat(payAmount);
       if (isNaN(amountToSettle) || amountToSettle <= 0) {
-        throw new Error("Settlement amount must be greater than 0.");
+        throw new Error("Payment amount must be greater than 0.");
       }
 
       // Zero-division / over-settlement safety: cap at remaining balance
@@ -133,12 +160,18 @@
       actualSettle = Math.round(actualSettle * 100) / 100;
 
       entry.settledAmount = Math.round((entry.settledAmount + actualSettle) * 100) / 100;
-      if (entry.settledAmount >= entry.amount) {
-        entry.status = "SETTLED";
-      } else {
-        entry.status = "PARTIALLY_SETTLED";
-      }
+      entry.status = this.determinePaymentStatus(entry.amount, entry.settledAmount);
       entry.updatedAt = Date.now();
+
+      if (!Array.isArray(entry.settlementHistory)) entry.settlementHistory = [];
+      var paymentRecord = {
+        id: "pay-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
+        amount: actualSettle,
+        paymentMethod: paymentMethod || "Cash",
+        notes: (notes || "").trim(),
+        timestamp: Date.now()
+      };
+      entry.settlementHistory.push(paymentRecord);
 
       var createdTxn = null;
       if (createBudgetTransaction) {
@@ -148,7 +181,7 @@
         // UTANG_TAKEN (you owe them) repaid -> expense (-)
         // PA_SUYO (you paid for them) repaid -> income (+)
         var txnType = (entry.type === "UTANG_TAKEN") ? "expense" : "income";
-        var desc = "Utang Settlement: " + entry.counterpartyName + " (" + (entry.description || entry.type) + ")";
+        var desc = "Utang Settlement (" + (paymentMethod || "Cash") + "): " + entry.counterpartyName + " (" + (entry.description || entry.type) + ")";
 
         createdTxn = {
           id: "m-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
@@ -164,7 +197,7 @@
         state.txns.push(createdTxn);
       }
 
-      return { entry: entry, createdTxn: createdTxn };
+      return { entry: entry, createdTxn: createdTxn, paymentRecord: paymentRecord };
     },
 
     /**

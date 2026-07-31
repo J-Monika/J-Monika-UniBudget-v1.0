@@ -1758,32 +1758,80 @@
 
 <!-- ===== SETTLEMENT MODAL ===== -->
 <div class="scrim" id="utangSettleScrim">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="utangSettleTitle" style="max-width:440px">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="utangSettleTitle" style="max-width:500px">
     <div class="modal-head">
       <div>
-        <h3 id="utangSettleTitle">💳 Settle Debt</h3>
-        <p id="utangSettleSub">Enter amount to settle for this record.</p>
+        <h3 id="utangSettleTitle">💳 Record Partial Payment</h3>
+        <p id="utangSettleSub">Record partial or full payment settlement.</p>
       </div>
       <button class="x" id="utangSettleClose" aria-label="Close">✕</button>
     </div>
+
+    <!-- Payment Summary Panel -->
+    <div style="margin: 4px 26px 12px; padding: 14px; background: var(--page); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;">Payment Summary</span>
+        <span class="utang-status-chip" id="uSettleStatusBadge">UNSETTLED</span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-top:2px;">
+        <div>
+          <div style="font-size:11px; color:var(--muted); font-weight:700;">Total Cost</div>
+          <div style="font-size:14px; font-weight:800;" id="uSettleTotalAmt">₱0.00</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--muted); font-weight:700;">Total Paid</div>
+          <div style="font-size:14px; font-weight:800; color:var(--income);" id="uSettlePaidAmt">₱0.00</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--muted); font-weight:700;">Balance Due</div>
+          <div style="font-size:14px; font-weight:800; color:#d97706;" id="uSettleBalanceDue">₱0.00</div>
+        </div>
+      </div>
+      <div class="utang-progress-bar" style="height:6px; margin-top:4px;"><span id="uSettleProgressSpan" style="width:0%"></span></div>
+    </div>
+
     <form id="utangSettleForm" style="padding:4px 26px 24px;">
       <div class="field">
-        <label for="uSettleAmount">Amount to Settle</label>
+        <label for="uSettleAmount">Payment Amount</label>
         <div class="amt-wrap">
           <span class="sym" id="uSettleSym">₱</span>
           <input id="uSettleAmount" class="num" type="number" min="0.01" step="0.01" placeholder="0.00" required />
         </div>
-        <div id="uSettleHint" style="font-size:12px; color:var(--muted); font-weight:600; margin-top:2px;"></div>
+        <div id="uSettleError" style="font-size:12px; color:#dc2626; font-weight:700; margin-top:3px; display:none;"></div>
+        <div id="uSettleHint" style="font-size:12px; color:var(--muted); font-weight:600; margin-top:3px;"></div>
       </div>
+
+      <div class="field">
+        <label for="uSettleMethod">Payment Method</label>
+        <select id="uSettleMethod" class="f">
+          <option value="Cash">💵 Cash</option>
+          <option value="GCash">📲 GCash</option>
+          <option value="Bank Transfer">🏦 Bank Transfer</option>
+          <option value="Credit Card">💳 Credit Card</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="uSettleNotes">Notes / Reference # (Optional)</label>
+        <input id="uSettleNotes" type="text" placeholder="e.g. Ref #1234567, Canteen partial payment" />
+      </div>
+
       <div class="field" style="flex-direction:row; align-items:center; gap:10px; padding:6px 0;">
         <input type="checkbox" id="uSettleLogTxn" checked style="width:18px; height:18px; cursor:pointer;" />
         <label for="uSettleLogTxn" style="font-size:13px; font-weight:700; cursor:pointer; margin:0;">
           Log settlement in main UniBudget spending history
         </label>
       </div>
-      <div class="modal-foot" style="padding:12px 0 0;">
+
+      <!-- Past Payment History Timeline -->
+      <div id="uSettleHistoryWrap" style="margin-top:10px; border-top:1px solid var(--line); padding-top:10px;">
+        <div style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:6px;">📋 Past Payment History</div>
+        <div id="uSettleHistoryList" style="display:flex; flex-direction:column; gap:6px; max-height:120px; overflow-y:auto;"></div>
+      </div>
+
+      <div class="modal-foot" style="padding:14px 0 0;">
         <button type="button" class="ghost" id="utangSettleCancel" style="flex:1">Cancel</button>
-        <button type="submit" class="submit" style="flex:1">Confirm Settlement</button>
+        <button type="submit" class="submit" id="uSettleSubmitBtn" style="flex:1">Record Payment</button>
       </div>
     </form>
   </div>
@@ -3852,32 +3900,99 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     }
     if (!entry) return;
 
-    var remaining = Math.max(0, entry.amount - entry.settledAmount);
+    var total = entry.amount;
+    var paid = entry.settledAmount || 0;
+    var remaining = PeerLedger.calculateBalanceDue(entry);
     var eSym = CURRENCIES[entry.currency] || entry.currency + " ";
 
+    if (el("#utangSettleTitle")) el("#utangSettleTitle").textContent = "💳 Record Partial Payment";
     if (el("#utangSettleSub")) {
-      el("#utangSettleSub").textContent = "Settling " + entry.counterpartyName + " (" + entry.type + " — " + eSym + entry.amount.toFixed(2) + ")";
+      el("#utangSettleSub").textContent = entry.counterpartyName + " (" + (entry.description || entry.type) + ")";
     }
     if (el("#uSettleSym")) el("#uSettleSym").textContent = eSym;
+
+    // Hydrate Payment Summary Panel
+    if (el("#uSettleTotalAmt")) el("#uSettleTotalAmt").textContent = eSym + total.toFixed(2);
+    if (el("#uSettlePaidAmt")) el("#uSettlePaidAmt").textContent = eSym + paid.toFixed(2);
+    if (el("#uSettleBalanceDue")) el("#uSettleBalanceDue").textContent = eSym + remaining.toFixed(2);
+
+    var pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+    if (el("#uSettleProgressSpan")) el("#uSettleProgressSpan").style.width = pct + "%";
+
+    var badgeEl = el("#uSettleStatusBadge");
+    if (badgeEl) {
+      badgeEl.textContent = entry.status;
+      badgeEl.className = "utang-status-chip " + entry.status.toLowerCase().replace("_settled", "").replace("partially", "partially");
+    }
+
     if (el("#uSettleAmount")) {
-      el("#uSettleAmount").value = remaining.toFixed(2);
+      el("#uSettleAmount").value = remaining > 0 ? remaining.toFixed(2) : "";
       el("#uSettleAmount").max = remaining.toFixed(2);
     }
 
+    if (el("#uSettleNotes")) el("#uSettleNotes").value = "";
+    if (el("#uSettleMethod")) el("#uSettleMethod").value = "Cash";
+
+    var errEl = el("#uSettleError");
+    if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
+
     updateSettleHint(remaining, remaining, eSym);
+
+    // Hydrate past payment history timeline
+    var historyList = el("#uSettleHistoryList");
+    if (historyList) {
+      historyList.innerHTML = "";
+      var history = Array.isArray(entry.settlementHistory) ? entry.settlementHistory : [];
+      if (!history.length) {
+        historyList.innerHTML = '<div style="font-size:12px; color:var(--muted); font-weight:600; text-align:center; padding:8px 0;">No prior partial payments logged.</div>';
+      } else {
+        history.slice().reverse().forEach(function(rec) {
+          var dateStr = new Date(rec.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+          var item = document.createElement("div");
+          item.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:12px;";
+          item.innerHTML =
+            '<div>' +
+              '<div style="font-weight:700; color:var(--ink); display:flex; align-items:center; gap:6px;">' +
+                '<span class="utang-type-chip suyo" style="font-size:9.5px; padding:1px 5px;">' + esc(rec.paymentMethod || "Cash") + '</span>' +
+                (rec.notes ? esc(rec.notes) : 'Partial payment') +
+              '</div>' +
+              '<div style="font-size:10.5px; color:var(--muted);">' + dateStr + '</div>' +
+            '</div>' +
+            '<div style="font-weight:800; color:var(--income);">' + eSym + (rec.amount || 0).toFixed(2) + '</div>';
+          historyList.appendChild(item);
+        });
+      }
+    }
 
     el("#utangSettleScrim").classList.add("show");
   }
+
   function closeUtangSettle() { el("#utangSettleScrim").classList.remove("show"); activeSettleEntryId = null; }
 
   function updateSettleHint(remaining, payAmt, eSym) {
     var hintEl = el("#uSettleHint");
+    var errEl = el("#uSettleError");
     if (!hintEl) return;
+
+    if (isNaN(payAmt) || payAmt <= 0) {
+      if (errEl) { errEl.textContent = "Please enter a valid payment amount > 0."; errEl.style.display = "block"; }
+      hintEl.textContent = "";
+      return;
+    }
+
+    if (payAmt > remaining + 0.009) {
+      if (errEl) { errEl.textContent = "⚠️ Payment exceeds remaining balance due (" + eSym + remaining.toFixed(2) + ")"; errEl.style.display = "block"; }
+      hintEl.textContent = "";
+      return;
+    }
+
+    if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
+
     var leftAfter = Math.max(0, remaining - payAmt);
     if (leftAfter === 0) {
-      hintEl.textContent = "✓ Will fully settle this record.";
+      hintEl.textContent = "✓ Will fully settle this record!";
     } else {
-      hintEl.textContent = "Remaining balance after payment: " + eSym + leftAfter.toFixed(2);
+      hintEl.textContent = "Remaining balance due after payment: " + eSym + leftAfter.toFixed(2);
     }
   }
 
@@ -3885,20 +4000,38 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     e.preventDefault();
     if (!activeSettleEntryId) return;
 
+    var entry = null;
+    for (var i = 0; i < state.peerLedger.length; i++) {
+      if (state.peerLedger[i].id === activeSettleEntryId) { entry = state.peerLedger[i]; break; }
+    }
+    if (!entry) return;
+
+    var remaining = PeerLedger.calculateBalanceDue(entry);
     var payAmt = parseFloat(el("#uSettleAmount").value);
+    var method = el("#uSettleMethod") ? el("#uSettleMethod").value : "Cash";
+    var notes = el("#uSettleNotes") ? el("#uSettleNotes").value : "";
     var logTxn = el("#uSettleLogTxn") ? el("#uSettleLogTxn").checked : true;
 
+    if (isNaN(payAmt) || payAmt <= 0) {
+      toast("Please enter a valid payment amount > 0.");
+      return;
+    }
+
+    if (payAmt > remaining + 0.009) {
+      toast("❌ Payment exceeds balance due (" + remaining.toFixed(2) + ")");
+      return;
+    }
+
     try {
-      var res = PeerLedger.settleEntry(state, activeSettleEntryId, payAmt, logTxn);
-      // Auto-purge stale history entries, then save and re-render
+      var res = PeerLedger.settleEntry(state, activeSettleEntryId, payAmt, logTxn, method, notes);
       purgeOldSettledEntries();
       save(); render(); closeUtangSettle();
       var fullySettled = res.entry && res.entry.status === "SETTLED";
       toast(fullySettled
         ? "✅ Fully settled! Record moved to Recent History."
-        : "💳 Partial settlement recorded" + (res.createdTxn ? " · logged to history" : "") + " ✓");
+        : "💳 Partial payment recorded (" + method + ") ✓");
     } catch (err) {
-      toast(err.message || "Failed to record settlement");
+      toast("❌ " + (err.message || "Failed to record settlement"));
     }
   }
 
@@ -3984,6 +4117,21 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
   if (el("#utangSettleClose")) el("#utangSettleClose").addEventListener("click", closeUtangSettle);
   if (el("#utangSettleCancel")) el("#utangSettleCancel").addEventListener("click", closeUtangSettle);
   if (el("#utangSettleForm")) el("#utangSettleForm").addEventListener("submit", saveUtangSettle);
+
+  if (el("#uSettleAmount")) {
+    el("#uSettleAmount").addEventListener("input", function() {
+      if (!activeSettleEntryId) return;
+      var entry = null;
+      for (var i = 0; i < state.peerLedger.length; i++) {
+        if (state.peerLedger[i].id === activeSettleEntryId) { entry = state.peerLedger[i]; break; }
+      }
+      if (!entry) return;
+      var remaining = PeerLedger.calculateBalanceDue(entry);
+      var eSym = CURRENCIES[entry.currency] || entry.currency + " ";
+      var val = parseFloat(this.value);
+      updateSettleHint(remaining, val, eSym);
+    });
+  }
 
   // History panel toggle
   if (el("#utangHistoryToggle")) {
