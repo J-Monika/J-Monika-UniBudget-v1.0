@@ -284,7 +284,8 @@
   // Background sync triggers (offline outbox retry + live pull)
   window.addEventListener("online", function () { flush(); pull(); });
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { pull(); flush(); } });
-  setInterval(function () { if (isOnline() && sessionEmail()) { pull(); flush(); } }, 60000);
+  var syncInterval = setInterval(function () { if (isOnline() && sessionEmail()) { pull(); flush(); } }, 60000);
+  if (syncInterval && typeof syncInterval.unref === "function") syncInterval.unref();
   // Initial catch-up for an already-signed-in user on cold start.
   if (sessionEmail()) setTimeout(pull, 1500);
 })();

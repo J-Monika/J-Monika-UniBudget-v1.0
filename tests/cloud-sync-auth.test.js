@@ -182,6 +182,7 @@ async function runTests() {
   console.log("  ✓ Test 4 Passed: Session token email accurately read during cloud pull");
 
   console.log("\n🎉 ALL CLOUD SYNC & AUTH UNIT TESTS PASSED SUCCESSFULLY!\n");
+  process.exit(0);
 }
 
 runTests().catch(err => {

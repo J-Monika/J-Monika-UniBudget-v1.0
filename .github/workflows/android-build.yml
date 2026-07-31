@@ -27,7 +27,7 @@ jobs:
     name: JS Unit Tests
     runs-on: ubuntu-latest
     # Safety net: kills the job if tests hang (e.g. infinite loop in test code).
-    timeout-minutes: 15
+    timeout-minutes: 5
 
     permissions:
       contents: read
@@ -35,27 +35,22 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4   # Node 20 runtime ✔
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # FIX: persist-credentials: false is correct for a read-only job.
-          # Removed the redundant `token:` field — it has no effect when
-          # persist-credentials is false and was causing confusion.
           persist-credentials: false
-          # Repo has a broken gitlink (J-Monika-UniBudget-v1.0) with no
-          # .gitmodules URL entry — skip submodule init entirely.
           submodules: false
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4   # Node 20 runtime ✔
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run notification engine unit tests
+      - name: Run JS unit tests
         run: npm test
 
   # ─────────────────────────────────────────────────────────────
@@ -65,8 +60,6 @@ jobs:
     name: Build Debug APK
     runs-on: ubuntu-latest
     needs: test
-    # 30 min is generous for a cold Gradle + AGP build; hot-cache builds
-    # typically finish in 8–12 min. Kills the job if Gradle hangs.
     timeout-minutes: 30
 
     permissions:
@@ -75,29 +68,22 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4   # Node 20 runtime ✔
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # FIX: read-only job — no credentials stored in Git config.
-          # Token field removed (it is silently ignored when persist-credentials
-          # is false, so including it was misleading).
           persist-credentials: false
           submodules: false
 
-      # setup-java exports $JAVA_HOME pointing to Temurin 21.
-      # We pass $JAVA_HOME directly to Gradle via -Dorg.gradle.java.home
-      # in the build step below, overriding the hard-coded Windows path
-      # that is checked into android/gradle.properties.
       - name: Set up JDK 21 (Temurin LTS)
-        uses: actions/setup-java@v4   # Node 20 runtime ✔
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4   # Node 20 runtime ✔
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Node dependencies
