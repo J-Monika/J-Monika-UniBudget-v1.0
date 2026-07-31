@@ -159,4 +159,58 @@ console.log("▶ Running UniBudget Gamification Engine Unit Tests...");
   console.log("  ✓ Test 7 Passed: 50/30/20 Budget Framework calculations and 100% total validation rules");
 }
 
+// Test 8: Framework Modal Confirmation Lifecycle Handling
+{
+  class FrameworkModalController {
+    constructor() {
+      this.parentOpen = false;
+      this.confirmOpen = false;
+      this.pendingAction = null;
+      this.framework = { income: 5000, needsPct: 50, wantsPct: 30, savePct: 20 };
+    }
+    openFramework() { this.parentOpen = true; }
+    closeFramework() { this.parentOpen = false; }
+    showConfirm(action) {
+      this.pendingAction = action;
+      this.confirmOpen = true;
+    }
+    closeConfirm() {
+      this.pendingAction = null;
+      this.confirmOpen = false;
+    }
+    executeConfirm(draftInputs) {
+      if (!this.pendingAction) return;
+      const act = this.pendingAction;
+      this.closeConfirm();
+      if (act === "reset") {
+        this.framework = { income: 5000, needsPct: 50, wantsPct: 30, savePct: 20 };
+      } else if (act === "save") {
+        this.framework = { ...draftInputs };
+      }
+      this.closeFramework();
+    }
+  }
+
+  const ctrl = new FrameworkModalController();
+  ctrl.openFramework();
+  assert.strictEqual(ctrl.parentOpen, true);
+
+  // Scenario 1: User clicks reset, then cancels
+  ctrl.showConfirm("reset");
+  assert.strictEqual(ctrl.confirmOpen, true);
+  ctrl.closeConfirm();
+  assert.strictEqual(ctrl.confirmOpen, false);
+  assert.strictEqual(ctrl.parentOpen, true, "Parent modal must remain open on cancel");
+
+  // Scenario 2: User clicks save, then confirms
+  ctrl.showConfirm("save");
+  assert.strictEqual(ctrl.confirmOpen, true);
+  ctrl.executeConfirm({ income: 10000, needsPct: 80, wantsPct: 10, savePct: 10 });
+  assert.strictEqual(ctrl.confirmOpen, false, "Confirm modal must close");
+  assert.strictEqual(ctrl.parentOpen, false, "Parent modal must automatically close on confirm");
+  assert.strictEqual(ctrl.framework.needsPct, 80);
+
+  console.log("  ✓ Test 8 Passed: Framework Modal Confirmation lifecycle state handling (cancel vs confirm)");
+}
+
 console.log("\n🎉 ALL GAMIFICATION UNIT TESTS PASSED SUCCESSFULLY!\n");

@@ -1619,6 +1619,27 @@
   </div>
 </div>
 
+<!-- ===== 50/30/20 FRAMEWORK CONFIRMATION MODAL ===== -->
+<div class="scrim" id="fwConfirmScrim" style="z-index:10050">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="fwConfirmTitle" style="max-width:420px">
+    <div class="modal-head">
+      <div>
+        <h3 id="fwConfirmTitle">⚠️ Confirm Action</h3>
+      </div>
+      <button class="x" id="fwConfirmClose" aria-label="Close">✕</button>
+    </div>
+    <div style="padding:4px 26px 20px;">
+      <p id="fwConfirmMsg" style="font-size:14px;color:var(--muted);line-height:1.5;margin:0">
+        Are you sure you want to proceed?
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost" id="fwConfirmCancel" style="flex:1">Cancel</button>
+      <button class="submit" id="fwConfirmOk" style="flex:1">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== SECURITY & PRIVACY MODAL ===== -->
 <div class="scrim" id="secScrim">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="secTitle" style="max-width:460px">
@@ -3196,15 +3217,66 @@
     el("#fwScrim").classList.remove("show");
   }
 
-  function resetFramework() {
+  var fwPendingAction = null;
+
+  function showFrameworkConfirm(actionType) {
+    if (actionType === "save") {
+      var needs = parseFloat((el("#fwNeedsPct") || {}).value);
+      if (isNaN(needs)) needs = 0;
+      var wants = parseFloat((el("#fwWantsPct") || {}).value);
+      if (isNaN(wants)) wants = 0;
+      var savePct = parseFloat((el("#fwSavePct") || {}).value);
+      if (isNaN(savePct)) savePct = 0;
+
+      var totalPct = Math.round(needs + wants + savePct);
+      if (totalPct !== 100) {
+        toast("❌ Total allocation percentage must equal 100%");
+        return;
+      }
+    }
+
+    fwPendingAction = actionType;
+    var titleEl = el("#fwConfirmTitle");
+    var msgEl = el("#fwConfirmMsg");
+
+    if (actionType === "reset") {
+      if (titleEl) titleEl.textContent = "Confirm Reset Framework";
+      if (msgEl) msgEl.textContent = "Are you sure you want to reset to the standard 50/30/20 framework? Any unsaved changes will be lost.";
+    } else if (actionType === "save") {
+      if (titleEl) titleEl.textContent = "Confirm Save Framework";
+      if (msgEl) msgEl.textContent = "Are you sure you want to save this framework configuration?";
+    }
+
+    if (el("#fwConfirmScrim")) el("#fwConfirmScrim").classList.add("show");
+  }
+
+  function closeFrameworkConfirm() {
+    fwPendingAction = null;
+    if (el("#fwConfirmScrim")) el("#fwConfirmScrim").classList.remove("show");
+  }
+
+  function executeFrameworkConfirm() {
+    if (!fwPendingAction) return;
+    var action = fwPendingAction;
+    closeFrameworkConfirm();
+
+    if (action === "reset") {
+      executeResetFramework();
+    } else if (action === "save") {
+      executeSaveFramework();
+    }
+  }
+
+  function executeResetFramework() {
     if (el("#fwNeedsPct")) el("#fwNeedsPct").value = 50;
     if (el("#fwWantsPct")) el("#fwWantsPct").value = 30;
     if (el("#fwSavePct")) el("#fwSavePct").value = 20;
     updateFrameworkCalc();
+    closeFramework();
     toast("Reset framework allocations to 50/30/20 defaults ✓");
   }
 
-  function saveFramework() {
+  function executeSaveFramework() {
     var inc = parseFloat((el("#fwIncome") || {}).value);
     if (isNaN(inc) || inc < 0) inc = 0;
     var needs = parseFloat((el("#fwNeedsPct") || {}).value);
@@ -3461,9 +3533,15 @@
   safeOn("#frameworkBtn", "click", openFramework);
   safeOn("#menuFramework", "click", function(){ var m = el("#menuPop"); if (m) m.classList.remove("show"); openFramework(); });
   safeOn("#fwClose", "click", closeFramework);
-  safeOn("#fwReset", "click", resetFramework);
-  safeOn("#fwSave", "click", saveFramework);
+  safeOn("#fwReset", "click", function(){ showFrameworkConfirm("reset"); });
+  safeOn("#fwSave", "click", function(){ showFrameworkConfirm("save"); });
   safeOn("#fwScrim", "click", function(e){ if (e.target === this) closeFramework(); });
+
+  // Framework confirmation dialog
+  safeOn("#fwConfirmClose", "click", closeFrameworkConfirm);
+  safeOn("#fwConfirmCancel", "click", closeFrameworkConfirm);
+  safeOn("#fwConfirmOk", "click", executeFrameworkConfirm);
+  safeOn("#fwConfirmScrim", "click", function(e){ if (e.target === this) closeFrameworkConfirm(); });
 
   ["#fwIncome", "#fwNeedsPct", "#fwWantsPct", "#fwSavePct"].forEach(function(sel) {
     var elem = el(sel);
@@ -3475,7 +3553,16 @@
 
   // Onboarding scrim backdrop & ESC listener
   if (el("#onb")) el("#onb").addEventListener("click", function(e){ if (e.target === this) finishOnboarding(); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape"){ closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); closeFramework(); hideOnboarding(); } });
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape"){
+      var confirmScrim = el("#fwConfirmScrim");
+      if (confirmScrim && confirmScrim.classList.contains("show")) {
+        closeFrameworkConfirm();
+        return;
+      }
+      closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); closeFramework(); hideOnboarding();
+    }
+  });
   safeOn("#clearAll", "click", clearAll);
   var syncFn = function(){ save(); toast("Saved to this device ✓"); };
   safeOn("#syncBtn", "click", syncFn);
