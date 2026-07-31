@@ -3274,11 +3274,11 @@
   }
   function randSalt(){ var a = new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a).map(function(b){ return b.toString(16).padStart(2,"0"); }).join(""); }
 
-  var cloudOn = !!(window.Cloud && Cloud.enabled);
+  function isCloudOn() { return !!(window.Cloud && window.Cloud.enabled); }
   var Auth = {
     async signup(name, email, pass){
       email = email.toLowerCase().trim();
-      if (cloudOn) {
+      if (isCloudOn()) {
         var uRes = await Cloud.signup(name, email, pass);
         Auth.saveSession(uRes);
         return uRes;
@@ -3294,7 +3294,7 @@
     },
     async login(email, pass){
       email = email.toLowerCase().trim();
-      if (cloudOn) {
+      if (isCloudOn()) {
         var uRes = await Cloud.login(email, pass);
         Auth.saveSession(uRes);
         return uRes;
@@ -3308,7 +3308,7 @@
       Auth.saveSession(uRes);
       return uRes;
     },
-    logout(){ localStorage.removeItem(SESSION_KEY); if (cloudOn && Cloud.logout) Cloud.logout(); },
+    logout(){ localStorage.removeItem(SESSION_KEY); if (isCloudOn() && window.Cloud.logout) Cloud.logout(); },
     saveSession(user){ if (user && user.email) localStorage.setItem(SESSION_KEY, JSON.stringify(user)); },
     getSession(){ try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; } }
   };
@@ -3896,7 +3896,7 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
   } catch (e) {}
 
   // mode chip + note reflect cloud vs device
-  if (cloudOn){
+  if (isCloudOn()){
     el("#modeChip").textContent = "☁ Cloud sync";
     el("#authNote").textContent = "Your account and data sync securely across devices.";
   }

@@ -14,8 +14,9 @@
     cfg.SUPABASE_ANON_KEY.indexOf("YOUR-") !== -1 ||
     cfg.SUPABASE_ANON_KEY.indexOf("YOUR_") !== -1;
 
+  var sbLib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
   var hasKeys =
-    window.supabase &&
+    sbLib &&
     cfg.SUPABASE_URL && cfg.SUPABASE_URL.indexOf("YOUR-") === -1 &&
     !isPlaceholderKey;
 
@@ -25,7 +26,7 @@
     return;
   }
 
-  var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+  var sb = sbLib.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true }
   });
 
