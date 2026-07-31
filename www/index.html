@@ -3305,6 +3305,186 @@
     toast("📊 50/30/20 Budget Framework saved!");
   }
 
+  // ---------- Security & Privacy Modal Controller ----------
+  var curPinInput = "";
+  var newPinInput = "";
+  var activeSecTab = "pin";
+
+  function switchSecurityTab(tab) {
+    activeSecTab = tab;
+    var tabPin = el("#secTabPin");
+    var tabPw = el("#secTabPw");
+    var pinPanel = el("#secPinPanel");
+    var pwPanel = el("#secPwPanel");
+
+    if (tab === "pin") {
+      if (tabPin) tabPin.className = "on";
+      if (tabPw) tabPw.className = "";
+      if (pinPanel) pinPanel.style.display = "block";
+      if (pwPanel) pwPanel.style.display = "none";
+    } else {
+      if (tabPw) tabPw.className = "on";
+      if (tabPin) tabPin.className = "";
+      if (pwPanel) pwPanel.style.display = "block";
+      if (pinPanel) pinPanel.style.display = "none";
+    }
+  }
+
+  function updatePinDots() {
+    for (var i = 0; i < 4; i++) {
+      var d = el("#scp" + i);
+      if (d) {
+        if (i < curPinInput.length) d.classList.add("filled");
+        else d.classList.remove("filled");
+      }
+    }
+    for (var j = 0; j < 4; j++) {
+      var nd = el("#snp" + j);
+      if (nd) {
+        if (j < newPinInput.length) nd.classList.add("filled");
+        else nd.classList.remove("filled");
+      }
+    }
+  }
+
+  function handlePinKeypress(targetPad, keyVal) {
+    var isDel = keyVal === "del" || keyVal === "⌫";
+    if (targetPad === "cur") {
+      if (isDel) {
+        curPinInput = curPinInput.slice(0, -1);
+      } else if (keyVal && curPinInput.length < 4) {
+        curPinInput += keyVal;
+      }
+    } else if (targetPad === "new") {
+      if (isDel) {
+        newPinInput = newPinInput.slice(0, -1);
+      } else if (keyVal && newPinInput.length < 4) {
+        newPinInput += keyVal;
+      }
+    }
+    updatePinDots();
+  }
+
+  function openSecurity() {
+    curPinInput = "";
+    newPinInput = "";
+    var statusEl = el("#secPinStatus");
+    var curWrap = el("#secPinCurrentWrap");
+    var errEl = el("#secPinErr");
+
+    if (errEl) errEl.textContent = "";
+
+    var hasP = Auth.hasPin();
+    if (statusEl) {
+      if (hasP) {
+        statusEl.textContent = "🔒 PIN Protection: ACTIVE";
+        statusEl.style.color = "var(--income)";
+      } else {
+        statusEl.textContent = "🔓 PIN Protection: INACTIVE (No PIN set)";
+        statusEl.style.color = "var(--muted)";
+      }
+    }
+
+    if (curWrap) {
+      curWrap.style.display = hasP ? "block" : "none";
+    }
+
+    updatePinDots();
+    switchSecurityTab("pin");
+
+    if (el("#secScrim")) el("#secScrim").classList.add("show");
+  }
+
+  function closeSecurity() {
+    if (el("#secScrim")) el("#secScrim").classList.remove("show");
+  }
+
+  async function savePin() {
+    var errEl = el("#secPinErr");
+    if (errEl) errEl.textContent = "";
+
+    var hasP = Auth.hasPin();
+    if (hasP) {
+      if (curPinInput.length < 4) {
+        if (errEl) errEl.textContent = "Please enter your current 4-digit PIN.";
+        return;
+      }
+      var valid = await Auth.verifyPin(curPinInput);
+      if (!valid) {
+        if (errEl) errEl.textContent = "Incorrect current PIN.";
+        return;
+      }
+    }
+
+    if (newPinInput.length < 4) {
+      if (errEl) errEl.textContent = "Please enter a 4-digit new PIN.";
+      return;
+    }
+
+    try {
+      await Auth.setPin(newPinInput);
+      toast("🔒 4-digit PIN saved!");
+      closeSecurity();
+    } catch (e) {
+      if (errEl) errEl.textContent = e.message || "Failed to save PIN.";
+    }
+  }
+
+  async function removePin() {
+    var errEl = el("#secPinErr");
+    if (errEl) errEl.textContent = "";
+
+    var hasP = Auth.hasPin();
+    if (!hasP) {
+      toast("No PIN is currently set.");
+      return;
+    }
+
+    if (curPinInput.length < 4) {
+      if (errEl) errEl.textContent = "Please enter your current 4-digit PIN to remove.";
+      return;
+    }
+
+    var valid = await Auth.verifyPin(curPinInput);
+    if (!valid) {
+      if (errEl) errEl.textContent = "Incorrect current PIN to remove.";
+      return;
+    }
+
+    Auth.clearPin();
+    toast("🔓 PIN removed successfully!");
+    closeSecurity();
+  }
+
+  async function savePassword() {
+    var curPw = el("#secCurPw") ? el("#secCurPw").value : "";
+    var newPw = el("#secNewPw") ? el("#secNewPw").value : "";
+    var confPw = el("#secConfPw") ? el("#secConfPw").value : "";
+
+    if (!curPw) { toast("Please enter your current password."); return; }
+    if (newPw.length < 6) { toast("New password must be at least 6 characters."); return; }
+    if (newPw !== confPw) { toast("New passwords do not match."); return; }
+
+    try {
+      if (!currentUser || !currentUser.email) throw new Error("Not logged in");
+      await Auth.login(currentUser.email, curPw);
+      var users = readUsers();
+      if (users[currentUser.email]) {
+        var salt = randSalt();
+        users[currentUser.email].salt = salt;
+        users[currentUser.email].hash = await hashPw(newPw, salt);
+        writeUsers(users);
+      }
+      toast("🔑 Password updated successfully!");
+      if (el("#secCurPw")) el("#secCurPw").value = "";
+      if (el("#secNewPw")) el("#secNewPw").value = "";
+      if (el("#secConfPw")) el("#secConfPw").value = "";
+      closeSecurity();
+    } catch (err) {
+      toast("❌ " + (err.message || "Failed to update password."));
+    }
+  }
+
   // ---- Confetti + celebration ----
   function confettiBurst(){
     var c = el("#confetti"); if(!c) return;
@@ -3551,6 +3731,39 @@
     }
   });
 
+  // Security & Privacy modal
+  safeOn("#securityBtn", "click", openSecurity);
+  safeOn("#menuSecurity", "click", function(){ var m = el("#menuPop"); if (m) m.classList.remove("show"); openSecurity(); });
+  safeOn("#secClose", "click", closeSecurity);
+  safeOn("#secScrim", "click", function(e){ if (e.target === this) closeSecurity(); });
+  safeOn("#secTabPin", "click", function(){ switchSecurityTab("pin"); });
+  safeOn("#secTabPw", "click", function(){ switchSecurityTab("pw"); });
+  safeOn("#secPinSave", "click", savePin);
+  safeOn("#secPinRemove", "click", removePin);
+  safeOn("#secPwSave", "click", savePassword);
+
+  // Keypad key delegate listener
+  document.querySelectorAll(".pin-setup-key").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var padType = this.getAttribute("data-pp");
+      var keyVal = this.getAttribute("data-k") || (this.classList.contains("del") ? "del" : "");
+      if (padType) handlePinKeypress(padType, keyVal);
+    });
+  });
+
+  // Password visibility toggles
+  document.querySelectorAll("#secPwPanel .toggle").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var tgtId = this.getAttribute("data-tgt");
+      var inp = el("#" + tgtId);
+      if (inp) {
+        var isPass = inp.type === "password";
+        inp.type = isPass ? "text" : "password";
+        this.textContent = isPass ? "Hide" : "Show";
+      }
+    });
+  });
+
   // Onboarding scrim backdrop & ESC listener
   if (el("#onb")) el("#onb").addEventListener("click", function(e){ if (e.target === this) finishOnboarding(); });
   document.addEventListener("keydown", function(e){
@@ -3560,7 +3773,7 @@
         closeFrameworkConfirm();
         return;
       }
-      closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); closeFramework(); hideOnboarding();
+      closeGoals(); closeAllowance(); closeAchievements(); closeNotificationSettings(); closeFramework(); closeSecurity(); hideOnboarding();
     }
   });
   safeOn("#clearAll", "click", clearAll);
@@ -3792,7 +4005,38 @@
     },
     logout(){ localStorage.removeItem(SESSION_KEY); if (isCloudOn() && window.Cloud.logout) Cloud.logout(); },
     saveSession(user){ if (user && user.email) localStorage.setItem(SESSION_KEY, JSON.stringify(user)); },
-    getSession(){ try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; } }
+    getSession(){ try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; } },
+    getPinHash(){
+      var email = (currentUser && currentUser.email) ? currentUser.email : null;
+      if (!email) { var s = Auth.getSession(); email = s ? s.email : null; }
+      if (!email) return null;
+      return localStorage.getItem("ub_pin_" + email) || null;
+    },
+    hasPin(){
+      return !!Auth.getPinHash();
+    },
+    async setPin(pinStr){
+      var email = (currentUser && currentUser.email) ? currentUser.email : null;
+      if (!email) { var s = Auth.getSession(); email = s ? s.email : null; }
+      if (!email) throw new Error("Not logged in");
+      var hash = await hashPw(pinStr, email);
+      localStorage.setItem("ub_pin_" + email, hash);
+      return hash;
+    },
+    clearPin(){
+      var email = (currentUser && currentUser.email) ? currentUser.email : null;
+      if (!email) { var s = Auth.getSession(); email = s ? s.email : null; }
+      if (!email) return;
+      localStorage.removeItem("ub_pin_" + email);
+    },
+    async verifyPin(pinStr){
+      var currentHash = Auth.getPinHash();
+      if (!currentHash) return true;
+      var email = (currentUser && currentUser.email) ? currentUser.email : null;
+      if (!email) return false;
+      var hash = await hashPw(pinStr, email);
+      return hash === currentHash;
+    }
   };
 
   // ---------- Auth UI ----------

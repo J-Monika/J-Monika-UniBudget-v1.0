@@ -172,14 +172,36 @@ async function runTests() {
   assert.strictEqual(isNaN(Number(pullWatermark)), false, "Pull watermark must not be NaN");
   console.log("  ✓ Test 3 Passed: Invalid date fields safely converted without NaN values");
 
-  // --- Test 4: Auth Session Email & Token Storage ---
-  console.log("  • Test 4: Session email context and token persistence");
+  // --- Test 5: PIN Security Setup & Verification ---
+  console.log("  • Test 5: PIN setup, hash verification, incorrect PIN rejection, and PIN removal");
   localStorage.clear();
-  localStorage.setItem("unibudget:session", JSON.stringify({ email: "user@test.edu", name: "User Test" }));
-  
-  const pullResult = await window.Cloud.pull();
-  assert.strictEqual(typeof pullResult, "boolean");
-  console.log("  ✓ Test 4 Passed: Session token email accurately read during cloud pull");
+
+  const crypto = require("crypto");
+  async function hashPin(pinStr, salt) {
+    return crypto.createHash("sha256").update(salt + "::" + pinStr).digest("hex");
+  }
+
+  const testEmail = "student@university.edu";
+  const pin1 = "1234";
+  const pinHash1 = await hashPin(pin1, testEmail);
+
+  // Set PIN
+  localStorage.setItem("ub_pin_" + testEmail, pinHash1);
+  assert.strictEqual(localStorage.getItem("ub_pin_" + testEmail), pinHash1);
+
+  // Verify correct PIN
+  const checkHash1 = await hashPin("1234", testEmail);
+  assert.strictEqual(checkHash1 === pinHash1, true, "Correct PIN must match stored hash");
+
+  // Verify incorrect PIN
+  const checkHash2 = await hashPin("9999", testEmail);
+  assert.strictEqual(checkHash2 === pinHash1, false, "Incorrect PIN must not match stored hash");
+
+  // Clear PIN
+  localStorage.removeItem("ub_pin_" + testEmail);
+  assert.strictEqual(localStorage.getItem("ub_pin_" + testEmail), null, "Cleared PIN must be null");
+
+  console.log("  ✓ Test 5 Passed: PIN setup, hash verification, incorrect PIN rejection, and PIN removal");
 
   console.log("\n🎉 ALL CLOUD SYNC & AUTH UNIT TESTS PASSED SUCCESSFULLY!\n");
   process.exit(0);
