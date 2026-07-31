@@ -118,20 +118,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Set up Android SDK command line tools & platform 37
-        env:
-          ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Components & Accept Licenses
         run: |
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          curl -sSLo cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
-          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-37" "build-tools;34.0.0" || true
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "platforms;android-37" "build-tools;34.0.0" || true
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-        shell: bash
 
       - name: Build debug APK  (versionCode 10 / versionName "10.0")
         env:
@@ -154,7 +148,7 @@ jobs:
       # Upload the APK keyed by commit SHA so it can be downloaded by the
       # release job below. retention-days=30 matches the branch-push use-case.
       - name: Upload debug APK artifact
-        uses: actions/upload-artifact@v4   # Node 20 runtime ✔
+        uses: actions/upload-artifact@v4
         with:
           name: UniBudget-debug-${{ github.sha }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -168,10 +162,7 @@ jobs:
     name: GitHub Release
     runs-on: ubuntu-latest
     needs: build-debug
-    # Only publish a release when a version tag (e.g. v.10) is pushed.
     if: startsWith(github.ref, 'refs/tags/v')
-    # Short timeout — this job only downloads an artifact and calls the
-    # GitHub API; no compilation involved.
     timeout-minutes: 15
 
     permissions:
@@ -180,25 +171,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4   # Node 20 runtime ✔
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # FIX: persist-credentials MUST be true here so that the
-          # GITHUB_TOKEN is stored in Git config. softprops/action-gh-release
-          # calls the GitHub API using these stored credentials to create the
-          # release and upload the APK asset.
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
           submodules: false
 
-      # FIX: Download the APK that was already built and verified by the
-      # build-debug job above. This replaces the previous approach of
-      # re-running the full JDK + Gradle + Node stack here, which:
-      #   (a) wasted ~10 min of runner time on every release, and
-      #   (b) risked producing a slightly different binary than what was tested.
-      # The released APK is now byte-for-byte identical to the tested artifact.
       - name: Download APK from build-debug job
-        uses: actions/download-artifact@v4   # Node 20 runtime ✔
+        uses: actions/download-artifact@v4
         with:
           name: UniBudget-debug-${{ github.sha }}
           # Download into the workspace root for easy reference below.
