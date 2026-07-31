@@ -80,7 +80,6 @@ function createTestHarness() {
 
   function addManualTxn(state, desc, amount, type, cat, currentTime) {
     var now = currentTime || Date.now();
-    if (!state.txns) state.txns = [];
     var txn = {
       id: "m-" + now,
       desc: desc,
@@ -96,7 +95,7 @@ function createTestHarness() {
       raw_message_text: null,
       captured_at: null
     };
-    state.txns.push(txn);
+    state.txns = (state.txns || []).concat(txn);
     return txn;
   }
 
@@ -199,6 +198,19 @@ const harness = createTestHarness();
   assert.strictEqual(restored.raw_message_text, "You have received 213.00 PHP of GCash from GA***...");
   assert.strictEqual(restored.captured_at, 1720000000000);
   console.log("  ✓ Test 3 Passed: Cloud serialization & deserialization maps source metadata");
+}
+
+// Test 4: Real-time state array reference update & newest-first list sorting
+{
+  const state = { txns: [] };
+  const oldTxn = harness.addManualTxn(state, "Book", 500, "expense", "Books & Supplies", 100000);
+  const newTxn = harness.addManualTxn(state, "Coffee", 120, "expense", "Food & Dining", 200000);
+
+  assert.strictEqual(state.txns.length, 2);
+  const activeSorted = state.txns.filter(t => !t.deleted).slice().sort((a, b) => b.ts - a.ts);
+  assert.strictEqual(activeSorted[0].desc, "Coffee");
+  assert.strictEqual(activeSorted[1].desc, "Book");
+  console.log("  ✓ Test 4 Passed: Real-time state array reference update & newest-first list sorting");
 }
 
 console.log("\n🎉 ALL TRANSACTION INSPECTOR UNIT TESTS PASSED SUCCESSFULLY!\n");

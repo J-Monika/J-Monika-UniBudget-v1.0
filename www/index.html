@@ -2357,13 +2357,15 @@
     e.preventDefault();
     var desc = el("#desc").value.trim();
     var amount = parseFloat(el("#amount").value);
-    var cat = el("#category").value;
+    var cat = el("#category").value || (typeVal === "income" ? "Allowance & Aid" : "Other");
     if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
     if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
-    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false, source:"manual", source_type:"MANUAL", source_app_or_sender:null, raw_message_text:null, captured_at:null });
+    var newTxn = { id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false, source:"manual", source_type:"MANUAL", source_app_or_sender:null, raw_message_text:null, captured_at:null };
+    state.txns = (state.txns || []).concat(newTxn);
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "ADD_TRANSACTION");
     save(); render();
     el("#addForm").reset();
+    fillCategories();
     el("#suggest").classList.remove("show");
     toast(typeVal === "income" ? "Income added ✓" : "Expense added ✓");
     el("#desc").focus();
@@ -3214,7 +3216,7 @@
       parsed.source_app_or_sender = sourceApp;
       parsed.raw_message_text = rawText;
       parsed.captured_at = currentTime;
-      state.txns.push(parsed);
+      state.txns = (state.txns || []).concat(parsed);
       if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
       save(); render();
       var walletName = (parsed.desc || "").split(" · ")[0] || "wallet";
@@ -3245,7 +3247,7 @@
     parsed.source_app_or_sender = sourceApp;
     parsed.raw_message_text = rawText;
     parsed.captured_at = currentTime;
-    state.txns.push(parsed);
+    state.txns = (state.txns || []).concat(parsed);
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "AUTO_TRANSACTION");
     save(); render();
     var walletName = (parsed.desc || "").split(" · ")[0] || "wallet";
