@@ -9,12 +9,21 @@
 (function () {
   "use strict";
   var cfg = window.UNIBUDGET_CONFIG || {};
+  var isPlaceholderKey =
+    !cfg.SUPABASE_ANON_KEY ||
+    cfg.SUPABASE_ANON_KEY.indexOf("YOUR-") !== -1 ||
+    cfg.SUPABASE_ANON_KEY.indexOf("sb_publishable_") === 0;
+
   var hasKeys =
     window.supabase &&
     cfg.SUPABASE_URL && cfg.SUPABASE_URL.indexOf("YOUR-") === -1 &&
-    cfg.SUPABASE_ANON_KEY && cfg.SUPABASE_ANON_KEY.indexOf("YOUR-") === -1;
+    !isPlaceholderKey;
 
-  if (!hasKeys) { window.Cloud = { enabled: false }; return; }
+  if (!hasKeys) {
+    console.log("[Cloud] Supabase keys not configured or placeholder detected. Operating in local Device mode.");
+    window.Cloud = { enabled: false };
+    return;
+  }
 
   var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true }
@@ -45,6 +54,7 @@
 
   function friendly(msg) {
     msg = String(msg || "");
+    if (/invalid API key|ApiKey|JWT|401|403|unauthorized/i.test(msg)) return "Cloud key error. Please check SUPABASE_ANON_KEY in app-config.js.";
     if (/invalid login/i.test(msg)) return "Wrong email or password. Please try again.";
     if (/already registered/i.test(msg)) return "An account with this email already exists. Try logging in.";
     if (/email.*not.*confirm/i.test(msg)) return "Please confirm your email first (check your inbox).";
