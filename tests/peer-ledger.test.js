@@ -303,4 +303,45 @@ console.log("▶ Running UniBudget Peer Ledger Unit Tests...");
   console.log("  ✓ Test 11 Passed: Partial payment tracking, settlement history logging, and validation rules");
 }
 
+// Test 12: Automated Overdue Payment Notifications & 24-Hour Throttling
+{
+  const state = { currency: "PHP", peerLedger: [] };
+  const pastDate = new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0]; // 3 days ago
+
+  const overdueEntry = PeerLedger.addEntry(state, {
+    type: "UTANG_TAKEN",
+    counterpartyName: "Juan Dela Cruz",
+    amount: 500,
+    dueDate: pastDate
+  });
+
+  const futureEntry = PeerLedger.addEntry(state, {
+    type: "UTANG_GIVEN",
+    counterpartyName: "Maria Clara",
+    amount: 300,
+    dueDate: "2030-01-01"
+  });
+
+  // Check 1: Initial overdue evaluation should return overdueEntry
+  const items1 = PeerLedger.checkOverdueNotifications(state);
+  assert.strictEqual(items1.length, 1);
+  assert.strictEqual(items1[0].entry.id, overdueEntry.id);
+  assert.strictEqual(items1[0].remaining, 500);
+  assert.strictEqual(items1[0].daysOverdue >= 3, true, "Should be at least 3 days overdue");
+
+  // Mark lastNotifiedAt to simulate dispatch
+  overdueEntry.lastNotifiedAt = Date.now();
+
+  // Check 2: Immediate second check within 24h should return 0 items (throttled)
+  const items2 = PeerLedger.checkOverdueNotifications(state);
+  assert.strictEqual(items2.length, 0, "24-hour throttling should prevent duplicate notifications");
+
+  // Check 3: Simulating 25 hours later should allow notification again
+  overdueEntry.lastNotifiedAt = Date.now() - (25 * 3600 * 1000);
+  const items3 = PeerLedger.checkOverdueNotifications(state);
+  assert.strictEqual(items3.length, 1, "Should notify again after 24-hour throttle window expires");
+
+  console.log("  ✓ Test 12 Passed: Automated overdue notification evaluation, 24-hour throttling, and days overdue calculations");
+}
+
 console.log("\n🎉 ALL PEER LEDGER UNIT TESTS PASSED SUCCESSFULLY!\n");

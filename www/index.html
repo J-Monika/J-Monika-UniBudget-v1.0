@@ -2120,6 +2120,85 @@
     return firedAlerts;
   }
 
+  function strToHashId(str) {
+    var hash = 0;
+    for (var i = 0; i < (str || "").length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash) % 1000000;
+  }
+
+  function triggerOverdueUtangNotifications() {
+    if (!window.PeerLedger || !state) return;
+    var overdueItems = PeerLedger.checkOverdueNotifications(state);
+    if (!overdueItems || !overdueItems.length) return;
+
+    try {
+      if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) {
+        Capacitor.Plugins.LocalNotifications.requestPermissions();
+      } else if (typeof Notification !== "undefined" && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    } catch (e) {}
+
+    var stateChanged = false;
+
+    overdueItems.forEach(function (item) {
+      var entry = item.entry;
+      var remaining = item.remaining;
+      var daysOverdue = item.daysOverdue;
+      var symStr = CURRENCIES[entry.currency] || entry.currency + " ";
+
+      var title = "Pahinumdom sa Utang ⚠️";
+      var body = entry.type === "UTANG_TAKEN"
+        ? "Your payment of " + symStr + remaining.toFixed(2) + " to " + entry.counterpartyName + " is overdue by " + daysOverdue + (daysOverdue === 1 ? " day." : " days.")
+        : "Payment of " + symStr + remaining.toFixed(2) + " from " + entry.counterpartyName + " is overdue by " + daysOverdue + (daysOverdue === 1 ? " day." : " days.");
+
+      try {
+        if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) {
+          Capacitor.Plugins.LocalNotifications.schedule({
+            notifications: [{
+              title: title,
+              body: body,
+              id: strToHashId(entry.id),
+              extra: { action: "utang", entryId: entry.id },
+              schedule: { at: new Date(Date.now() + 200) }
+            }]
+          });
+        } else if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          new Notification(title, { body: body });
+        }
+      } catch (err) {
+        console.error("[triggerOverdueUtangNotifications] Failed:", err);
+      }
+
+      toast("⚠️ " + body);
+      entry.lastNotifiedAt = Date.now();
+      stateChanged = true;
+    });
+
+    if (stateChanged) {
+      save();
+    }
+  }
+
+  // Deep-linking notification action listener
+  try {
+    if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) {
+      Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", function (notificationAction) {
+        if (notificationAction && notificationAction.notification && notificationAction.notification.extra) {
+          var extra = notificationAction.notification.extra;
+          if (extra.action === "utang" && extra.entryId) {
+            var sec = el("#utangSection");
+            if (sec) sec.scrollIntoView({ behavior: "smooth" });
+            if (typeof openUtangSettle === "function") openUtangSettle(extra.entryId);
+          }
+        }
+      });
+    }
+  } catch (e) {}
+
   function renderNotificationBanners() {
     var container = el("#notifBannersContainer");
     if (!container) return;
@@ -3522,6 +3601,7 @@
     injectMascots();
     if (typeof purgeOldSettledEntries === "function") purgeOldSettledEntries();
     render();
+    if (typeof triggerOverdueUtangNotifications === "function") triggerOverdueUtangNotifications();
     progressBaseline();               // baseline so we don't celebrate on load
     if (!state.onboarded) setTimeout(showOnboarding, 350);
   }

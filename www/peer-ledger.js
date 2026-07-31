@@ -48,10 +48,53 @@
      * @param {number} paid
      * @returns {PeerLedgerStatus}
      */
+    /**
+     * Determines payment status dynamically based on total and paid amounts.
+     * @param {number} total
+     * @param {number} paid
+     * @returns {PeerLedgerStatus}
+     */
     determinePaymentStatus: function (total, paid) {
       if (!paid || paid <= 0) return "UNSETTLED";
       if (paid >= total) return "SETTLED";
       return "PARTIALLY_SETTLED";
+    },
+
+    /**
+     * Evaluates overdue entries requiring notifications with 24-hour throttling.
+     * @param {Object} state
+     * @returns {Array<{ entry: PeerLedgerEntry, remaining: number, daysOverdue: number }>}
+     */
+    checkOverdueNotifications: function (state) {
+      this.normalizeState(state);
+      var now = Date.now();
+      var overdueItems = [];
+      var nowD = new Date();
+      var startOfTodayMs = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate()).getTime();
+      var TWENTY_FOUR_HOURS = 86400000;
+
+      state.peerLedger.forEach(function (entry) {
+        if (entry.deleted || entry.status === "SETTLED") return;
+        if (!entry.dueDate) return;
+
+        var dueMs = typeof entry.dueDate === "number" ? entry.dueDate : new Date(entry.dueDate).getTime();
+        if (isNaN(dueMs) || dueMs >= startOfTodayMs) return;
+
+        // 24-hour throttling check
+        if (entry.lastNotifiedAt && (now - entry.lastNotifiedAt < TWENTY_FOUR_HOURS)) return;
+
+        var remaining = Math.max(0, entry.amount - entry.settledAmount);
+        var diffMs = Math.max(0, now - dueMs);
+        var daysOverdue = Math.max(1, Math.floor(diffMs / TWENTY_FOUR_HOURS));
+
+        overdueItems.push({
+          entry: entry,
+          remaining: Math.round(remaining * 100) / 100,
+          daysOverdue: daysOverdue
+        });
+      });
+
+      return overdueItems;
     },
 
     /**
@@ -72,6 +115,7 @@
           entry.status = self.determinePaymentStatus(entry.amount, entry.settledAmount);
         }
         if (!Array.isArray(entry.settlementHistory)) entry.settlementHistory = [];
+        if (typeof entry.lastNotifiedAt !== "number") entry.lastNotifiedAt = null;
         if (typeof entry.createdAt !== "number") entry.createdAt = Date.now();
         if (typeof entry.updatedAt !== "number") entry.updatedAt = entry.createdAt;
         if (typeof entry.deleted !== "boolean") entry.deleted = false;
@@ -111,6 +155,7 @@
         status: "UNSETTLED",
         settledAmount: 0,
         settlementHistory: [],
+        lastNotifiedAt: null,
         dueDate: input.dueDate ? new Date(input.dueDate).getTime() : null,
         createdAt: now,
         updatedAt: now,
