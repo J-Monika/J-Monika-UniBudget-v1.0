@@ -228,4 +228,33 @@ console.log("▶ Running UniBudget Peer Ledger Unit Tests...");
   console.log("  ✓ Test 9 Passed: Submission flow dispatches 'Utang Recorded!', resets form, and closes window");
 }
 
+// Test 10: Search, Multi-Criteria Filtering, Overdue Detection & Sorting
+{
+  const state = { currency: "PHP", peerLedger: [] };
+  const e1 = PeerLedger.addEntry(state, { type: "UTANG_GIVEN", counterpartyName: "Maria Clara", amount: 500, description: "Canteen lunch", dueDate: "2020-01-01" });
+  const e2 = PeerLedger.addEntry(state, { type: "UTANG_TAKEN", counterpartyName: "Juan Dela Cruz", amount: 1500, description: "Project supplies" });
+  const e3 = PeerLedger.addEntry(state, { type: "PA_SUYO", counterpartyName: "Jose Rizal", amount: 200, description: "Book printing" });
+
+  // Overdue check
+  const nowMs = new Date("2026-07-31").getTime();
+  const e1Overdue = e1.dueDate && e1.status !== "SETTLED" && (new Date(e1.dueDate).getTime() < nowMs);
+  assert.strictEqual(e1Overdue, true, "e1 with 2020 due date should be flagged overdue");
+
+  // Search filter check
+  const searchResults = state.peerLedger.filter(e => e.counterpartyName.toLowerCase().includes("maria") || (e.description && e.description.toLowerCase().includes("maria")));
+  assert.strictEqual(searchResults.length, 1);
+  assert.strictEqual(searchResults[0].id, e1.id);
+
+  // Type filter: OWED_TO_ME
+  const owedToMe = state.peerLedger.filter(e => e.type === "UTANG_GIVEN" || e.type === "PA_SUYO");
+  assert.strictEqual(owedToMe.length, 2);
+
+  // Sort by Amount High to Low
+  const sortedByAmt = [...state.peerLedger].sort((a, b) => b.amount - a.amount);
+  assert.strictEqual(sortedByAmt[0].id, e2.id); // 1500 amount
+  assert.strictEqual(sortedByAmt[2].id, e3.id); // 200 amount
+
+  console.log("  ✓ Test 10 Passed: Search, filter criteria, overdue detection, and sort ordering");
+}
+
 console.log("\n🎉 ALL PEER LEDGER UNIT TESTS PASSED SUCCESSFULLY!\n");

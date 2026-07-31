@@ -934,27 +934,77 @@
 
   /* ===== UTANG / PA-SUYO TRACKER STYLES ===== */
   .utang-summary-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 26px 8px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 14px 26px 8px;
+  }
+  @media (max-width: 600px) {
+    .utang-summary-grid { grid-template-columns: 1fr; gap: 8px; padding: 12px 16px 6px; }
   }
   .utang-metric {
-    background: var(--page); border: 1px solid var(--line); border-radius: 14px; padding: 14px;
-    display: flex; flex-direction: column; gap: 4px;
+    background: var(--page); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 3px;
   }
-  .utang-metric-val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .utang-metric-val { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
   .utang-metric-val.pos { color: var(--income); }
   .utang-metric-val.neg { color: var(--spent); }
+  .utang-metric-val.warn { color: #d97706; }
 
-  .utang-list { padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  /* Utang Controls Bar (Search, Filter Chips, Sort) */
+  .utang-controls-wrap {
+    padding: 6px 26px 12px; display: flex; flex-direction: column; gap: 10px;
+  }
+  @media (max-width: 600px) {
+    .utang-controls-wrap { padding: 4px 16px 10px; }
+  }
+  .utang-search-box input {
+    width: 100%; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--page); color: var(--ink); font-family: inherit; font-size: 13px; font-weight: 600;
+    transition: border-color .15s, box-shadow .15s; outline: none;
+  }
+  .utang-search-box input:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .utang-controls-sub {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .utang-filter-chips {
+    display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+  }
+  .utang-filter-chips::-webkit-scrollbar { display: none; }
+  .u-filter-chip {
+    border: 1px solid var(--line); background: var(--page); color: var(--muted);
+    padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+    white-space: nowrap; cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .u-filter-chip:hover { background: var(--track); color: var(--ink); }
+  .u-filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,.25); }
+
+  .utang-sort-box select {
+    padding: 5px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--page); color: var(--ink); font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+  }
+
+  .utang-list { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  @media (max-width: 600px) { .utang-list { padding: 4px 16px 16px; } }
+
+  /* Avatar Circle */
+  .u-avatar {
+    width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 800; font-size: 13.5px; color: #fff; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15); text-transform: uppercase; letter-spacing: -.02em;
+  }
+
   .counterparty-card {
     border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden;
+    transition: box-shadow .15s;
   }
+  .counterparty-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
   .counterparty-head {
-    padding: 14px 16px; background: var(--page); cursor: pointer;
+    padding: 12px 16px; background: var(--page); cursor: pointer;
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     transition: background .15s;
   }
   .counterparty-head:hover { background: var(--track); }
-  .counterparty-name { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .counterparty-name { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 10px; }
   .counterparty-bal { font-weight: 800; font-size: 15px; }
   .counterparty-bal.pos { color: var(--income); }
   .counterparty-bal.neg { color: var(--spent); }
@@ -964,7 +1014,9 @@
   .utang-entry-item {
     display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
     border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+    transition: border-color .15s;
   }
+  .utang-entry-item:hover { border-color: var(--accent-soft); }
   .utang-entry-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .utang-type-chip {
     font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .03em;
@@ -978,11 +1030,29 @@
   .utang-status-chip.unsettled { background: #fef3c7; color: #b45309; }
   .utang-status-chip.partially { background: #e0e7ff; color: #4338ca; }
   .utang-status-chip.settled { background: var(--income-soft); color: var(--income); }
+  .utang-status-chip.overdue { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+  :root[data-theme="dark"] .utang-status-chip.overdue { background: #3a1c1c; color: #fca5a5; border-color: #991b1b; }
+
+  .overdue-warning-tag {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800;
+    color: #dc2626; background: #fee2e2; padding: 2px 7px; border-radius: 6px;
+  }
+  :root[data-theme="dark"] .overdue-warning-tag { background: #3a1c1c; color: #fca5a5; }
 
   .utang-progress-bar { height: 5px; border-radius: 999px; background: var(--track); overflow: hidden; margin-top: 4px; }
   .utang-progress-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s ease; }
 
   .utang-entry-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  /* Empty state styling */
+  .empty-utang {
+    padding: 28px 20px; text-align: center; color: var(--muted);
+    background: var(--page); border-radius: 16px; border: 1px dashed var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .empty-utang .empty-ic { font-size: 36px; margin-bottom: 4px; }
+  .empty-utang .empty-title { font-weight: 800; font-size: 15px; color: var(--ink); }
+  .empty-utang .empty-sub { font-size: 13px; font-weight: 600; max-width: 320px; margin-bottom: 8px; }
   .utang-btn-settle {
     border: 0; background: var(--accent); color: #fff; font-weight: 700; font-size: 12px;
     padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: transform .1s;
@@ -1253,11 +1323,11 @@
         <div class="txns" id="txns"></div>
       </section>
 
-      <!-- ===== UTANG / PA-SUYO TRACKER SECTION ===== -->
+      <!-- ===== UTANG TRANSACTIONS TRACKER SECTION ===== -->
       <section class="card" id="utangSection">
         <div class="sec-head">
-          <h2>🤝 Utang / Pa-Suyo</h2>
-          <span class="side link" id="openUtangAddBtn">+ Add Record</span>
+          <h2>🤝 Utang Transactions</h2>
+          <span class="side link" id="openUtangAddBtn">+ Add New Utang</span>
         </div>
 
         <div class="utang-summary-grid">
@@ -1268,6 +1338,32 @@
           <div class="utang-metric">
             <div class="eyebrow">You owe</div>
             <div class="utang-metric-val neg" id="utangYouOwe">₱0.00</div>
+          </div>
+          <div class="utang-metric">
+            <div class="eyebrow">Unsettled Count</div>
+            <div class="utang-metric-val warn" id="utangPendingCount">0</div>
+          </div>
+        </div>
+
+        <!-- Controls Bar: Search, Filters & Sorting -->
+        <div class="utang-controls-wrap">
+          <div class="utang-search-box">
+            <input type="text" id="uSearchInput" placeholder="🔍 Search by name or description..." />
+          </div>
+          <div class="utang-controls-sub">
+            <div class="utang-filter-chips" id="uFilterChips">
+              <button type="button" class="u-filter-chip active" data-filter="ALL">All</button>
+              <button type="button" class="u-filter-chip" data-filter="OWED_TO_ME">Owed to Me</button>
+              <button type="button" class="u-filter-chip" data-filter="I_OWE">I Owe</button>
+              <button type="button" class="u-filter-chip" data-filter="UNSETTLED">Unsettled Only</button>
+            </div>
+            <div class="utang-sort-box">
+              <select id="uSortSelect">
+                <option value="newest">Date (Newest First)</option>
+                <option value="amount_high">Amount (High to Low)</option>
+                <option value="due_date">Due Date</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -3412,6 +3508,23 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
   // ---------- Peer Ledger (Utang / Pa-Suyo Tracker) UI ----------
   var utangAddType = "UTANG_GIVEN";
   var activeSettleEntryId = null;
+  var utangSearchQuery = "";
+  var utangFilterMode = "ALL";
+  var utangSortMode = "newest";
+
+  function nameToHsl(name) {
+    var hash = 0;
+    for (var i = 0; i < (name || "").length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    var h = Math.abs(hash) % 360;
+    return "hsl(" + h + ", 60%, 38%)";
+  }
+
+  function getInitials(name) {
+    if (!name) return "?";
+    var parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
 
   function renderUtang() {
     if (!window.PeerLedger || !state) return;
@@ -3424,36 +3537,96 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
     var owedToYouEl = el("#utangOwedToYou");
     var youOweEl = el("#utangYouOwe");
+    var pendingCountEl = el("#utangPendingCount");
     if (owedToYouEl) owedToYouEl.textContent = (CURRENCIES[primaryCur] || "₱") + primaryTotals.totalOwedToYou.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (youOweEl) youOweEl.textContent = (CURRENCIES[primaryCur] || "₱") + primaryTotals.totalYouOwe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // Grouped list by counterparty
+    var activeUnsettledAll = (state.peerLedger || []).filter(function(e) { return !e.deleted && e.status !== "SETTLED"; });
+    if (pendingCountEl) pendingCountEl.textContent = activeUnsettledAll.length;
+
     var listContainer = el("#utangList");
     if (!listContainer) return;
     listContainer.innerHTML = "";
 
     var summaryMap = PeerLedger.getSummaryByCounterparty(state);
-    // Active list: only UNSETTLED and PARTIALLY_SETTLED entries
-    var activeEntries = PeerLedger.getFilteredEntries(state).filter(function(e) {
-      return e.status !== "SETTLED";
+
+    // Filter active entries
+    var filteredEntries = (state.peerLedger || []).filter(function(e) {
+      if (e.deleted) return false;
+
+      // Filter by search query
+      if (utangSearchQuery) {
+        var q = utangSearchQuery.toLowerCase();
+        var nameMatch = (e.counterpartyName || "").toLowerCase().indexOf(q) !== -1;
+        var descMatch = (e.description || "").toLowerCase().indexOf(q) !== -1;
+        if (!nameMatch && !descMatch) return false;
+      }
+
+      // Filter by chip mode
+      if (utangFilterMode === "OWED_TO_ME") {
+        if (e.type !== "UTANG_GIVEN" && e.type !== "PA_SUYO") return false;
+        if (e.status === "SETTLED" && !utangSearchQuery) return false;
+      } else if (utangFilterMode === "I_OWE") {
+        if (e.type !== "UTANG_TAKEN") return false;
+        if (e.status === "SETTLED" && !utangSearchQuery) return false;
+      } else if (utangFilterMode === "UNSETTLED") {
+        if (e.status !== "UNSETTLED" && e.status !== "PARTIALLY_SETTLED") return false;
+      } else {
+        // ALL
+        if (e.status === "SETTLED" && !utangSearchQuery) return false;
+      }
+
+      return true;
     });
 
-    if (!activeEntries.length) {
-      listContainer.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--muted);font-weight:600;"><div class="big" style="font-size:32px;margin-bottom:8px">🤝</div>No outstanding utang records.<br>All clear! Check Recent History below for settled entries.</div>';
+    // Sort active entries
+    if (utangSortMode === "amount_high") {
+      filteredEntries.sort(function(a, b) {
+        var remA = Math.max(0, a.amount - a.settledAmount);
+        var remB = Math.max(0, b.amount - b.settledAmount);
+        return remB - remA;
+      });
+    } else if (utangSortMode === "due_date") {
+      filteredEntries.sort(function(a, b) {
+        if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+    } else { // newest
+      filteredEntries.sort(function(a, b) {
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+    }
+
+    if (!filteredEntries.length) {
+      listContainer.innerHTML =
+        '<div class="empty-utang">' +
+          '<div class="empty-ic">🤝</div>' +
+          '<div class="empty-title">No utang records found</div>' +
+          '<div class="empty-sub">No transactions match your criteria. Click \'+ Add New Utang\' to create one.</div>' +
+          '<button type="button" class="submit sm" id="uEmptyAddBtn" style="margin-top:4px; max-width:200px;">+ Add New Utang</button>' +
+        '</div>';
+      var emptyAddBtn = listContainer.querySelector("#uEmptyAddBtn");
+      if (emptyAddBtn) emptyAddBtn.addEventListener("click", openUtangAdd);
       renderUtangHistory();
       return;
     }
 
     // Group entries by counterparty
     var groupedByCp = {};
-    activeEntries.forEach(function (e) {
+    filteredEntries.forEach(function (e) {
       if (!groupedByCp[e.counterpartyName]) groupedByCp[e.counterpartyName] = [];
       groupedByCp[e.counterpartyName].push(e);
     });
 
+    var todayMs = startOfToday();
+
     Object.keys(groupedByCp).forEach(function (cpName) {
       var entries = groupedByCp[cpName];
       var curMap = summaryMap.get(cpName);
+      var avatarBg = nameToHsl(cpName);
+      var initials = getInitials(cpName);
 
       // Render primary currency net balance for counterparty header
       var netText = "";
@@ -3480,7 +3653,10 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
       var headHtml =
         '<div class="counterparty-head">' +
-          '<div class="counterparty-name"><span>👤</span>' + esc(cpName) + ' <span style="font-size:12px; font-weight:600; color:var(--muted)">(' + entries.length + ')</span></div>' +
+          '<div class="counterparty-name">' +
+            '<div class="u-avatar" style="background:' + avatarBg + '">' + esc(initials) + '</div>' +
+            '<div>' + esc(cpName) + ' <span style="font-size:12px; font-weight:600; color:var(--muted)">(' + entries.length + ')</span></div>' +
+          '</div>' +
           '<div class="counterparty-bal ' + balClass + '">' + esc(netText) + '</div>' +
         '</div>';
 
@@ -3489,35 +3665,38 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
         var remaining = Math.max(0, entry.amount - entry.settledAmount);
         var entrySym = CURRENCIES[entry.currency] || entry.currency + " ";
 
-        var typeLabel = "UTANG GIVEN";
+        var typeLabel = "Utang Niya (Owes Me)";
         var typeClass = "given";
-        if (entry.type === "UTANG_TAKEN") { typeLabel = "UTANG TAKEN"; typeClass = "taken"; }
-        else if (entry.type === "PA_SUYO") { typeLabel = "PA-SUYO"; typeClass = "suyo"; }
+        if (entry.type === "UTANG_TAKEN") { typeLabel = "Utang Ko (I Owe)"; typeClass = "taken"; }
+        else if (entry.type === "PA_SUYO") { typeLabel = "Pa-Suyo"; typeClass = "suyo"; }
 
-        var statusLabel = entry.status;
-        var statusClass = entry.status.toLowerCase().replace("_settled", "").replace("partially", "partially");
+        var isOverdue = entry.dueDate && entry.status !== "SETTLED" && (new Date(entry.dueDate).getTime() < todayMs);
+        var statusLabel = isOverdue ? "OVERDUE" : entry.status;
+        var statusClass = isOverdue ? "overdue" : entry.status.toLowerCase().replace("_settled", "").replace("partially", "partially");
 
         var pct = entry.amount > 0 ? Math.min(100, Math.round((entry.settledAmount / entry.amount) * 100)) : 0;
         var dueDateStr = entry.dueDate ? new Date(entry.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
+        var amtColorClass = entry.type === "UTANG_TAKEN" ? "neg" : "pos";
 
         entriesHtml +=
           '<div class="utang-entry-item">' +
             '<div class="utang-entry-top">' +
-              '<div style="display:flex; align-items:center; gap:6px;">' +
+              '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">' +
                 '<span class="utang-type-chip ' + typeClass + '">' + typeLabel + '</span>' +
                 '<span class="utang-status-chip ' + statusClass + '">' + statusLabel + '</span>' +
+                (isOverdue ? '<span class="overdue-warning-tag">⚠️ Overdue</span>' : '') +
               '</div>' +
-              '<div style="font-weight:800; font-size:14.5px;" class="num">' + entrySym + entry.amount.toFixed(2) + '</div>' +
+              '<div style="font-weight:800; font-size:14.5px;" class="num ' + amtColorClass + '">' + entrySym + entry.amount.toFixed(2) + '</div>' +
             '</div>' +
             (entry.description ? '<div style="font-size:13px; font-weight:600; color:var(--ink);">' + esc(entry.description) + '</div>' : '') +
             '<div style="font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center;">' +
               '<span>Settled: <b>' + entrySym + entry.settledAmount.toFixed(2) + '</b> (' + pct + '%)</span>' +
-              (dueDateStr ? '<span>Due: <b>' + dueDateStr + '</b></span>' : '') +
+              (dueDateStr ? '<span>Due: <b style="' + (isOverdue ? 'color:#dc2626' : '') + '">' + dueDateStr + '</b></span>' : '') +
             '</div>' +
             '<div class="utang-progress-bar"><span style="width:' + pct + '%"></span></div>' +
             '<div class="utang-entry-actions">' +
               (entry.status !== "SETTLED" ? '<button type="button" class="utang-btn-settle" data-settleid="' + entry.id + '">💳 Settle</button>' : '') +
-              '<button type="button" class="utang-btn-del" data-delid="' + entry.id + '">Delete</button>' +
+              '<button type="button" class="utang-btn-del" data-delid="' + entry.id + '">🗑️ Delete</button>' +
             '</div>' +
           '</div>';
       });
@@ -3744,6 +3923,31 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
   if (el("#utangAddClose")) el("#utangAddClose").addEventListener("click", closeUtangAdd);
   if (el("#utangAddCancel")) el("#utangAddCancel").addEventListener("click", closeUtangAdd);
   if (el("#utangAddForm")) el("#utangAddForm").addEventListener("submit", saveUtangAdd);
+
+  if (el("#uSearchInput")) {
+    el("#uSearchInput").addEventListener("input", function () {
+      utangSearchQuery = this.value.trim();
+      renderUtang();
+    });
+  }
+
+  if (el("#uFilterChips")) {
+    el("#uFilterChips").addEventListener("click", function (e) {
+      var btn = e.target.closest(".u-filter-chip");
+      if (!btn) return;
+      el("#uFilterChips").querySelectorAll(".u-filter-chip").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      utangFilterMode = btn.getAttribute("data-filter") || "ALL";
+      renderUtang();
+    });
+  }
+
+  if (el("#uSortSelect")) {
+    el("#uSortSelect").addEventListener("change", function () {
+      utangSortMode = this.value || "newest";
+      renderUtang();
+    });
+  }
 
   if (el("#uBtnGiven")) el("#uBtnGiven").addEventListener("click", function () { setUtangType("UTANG_GIVEN"); });
   if (el("#uBtnTaken")) el("#uBtnTaken").addEventListener("click", function () { setUtangType("UTANG_TAKEN"); });
