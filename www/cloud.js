@@ -167,7 +167,13 @@
       if (changedPeer.length) {
         var resPeer = await sb.from("peer_ledger")
           .upsert(changedPeer.map(function (p) { return rowFromPeerLedger(u.id, p); }), { onConflict: "user_id,id" });
-        if (resPeer.error) throw resPeer.error;
+        if (resPeer.error) {
+          if (/Could not find the table|relation.*does not exist|PGRST301|42P01/i.test(resPeer.error.message || "")) {
+            console.warn("[Cloud Sync] Optional table 'peer_ledger' not found in Supabase schema. Skipping peer ledger push.");
+          } else {
+            throw resPeer.error;
+          }
+        }
       }
       var res2 = await sb.from("budgets").upsert(
         { user_id: u.id, data: { currency: state.currency, limits: state.limits, notifications: state.notifications }, updated_at: new Date().toISOString() },
@@ -207,7 +213,14 @@
 
       var resPeer = await sb.from("peer_ledger").select("*")
         .eq("user_id", u.id).gt("updated_at", lastIso);
-      if (resPeer.error) throw resPeer.error;
+      if (resPeer.error) {
+        if (/Could not find the table|relation.*does not exist|PGRST301|42P01/i.test(resPeer.error.message || "")) {
+          console.warn("[Cloud Sync] Optional table 'peer_ledger' not found in Supabase schema. Skipping peer ledger sync.");
+          resPeer = { data: [] };
+        } else {
+          throw resPeer.error;
+        }
+      }
 
       var cache = readCache(email) || { currency: "PHP", limits: {}, txns: [], peerLedger: [] };
       var byId = {}; (cache.txns || []).forEach(function (t) { byId[t.id] = t; });
