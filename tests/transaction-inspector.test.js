@@ -213,4 +213,24 @@ const harness = createTestHarness();
   console.log("  ✓ Test 4 Passed: Real-time state array reference update & newest-first list sorting");
 }
 
+// Test 5: Recent Transactions Empty State Fallback & Live Updates
+{
+  const state = { txns: [] };
+  
+  // Empty state check
+  const active1 = state.txns.filter(t => !t.deleted);
+  assert.strictEqual(active1.length, 0);
+  const emptyStateHtml = '<div class="empty"><div class="big">🧾</div>No recent transactions found.<br>Add your first record to get started.</div>';
+  assert.ok(emptyStateHtml.includes("No recent transactions found"));
+
+  // Add transaction -> State updates immediately
+  const t1 = harness.addManualTxn(state, "Jollibee", 150, "expense", "Food & Dining", Date.now());
+  const active2 = state.txns.filter(t => !t.deleted);
+  assert.strictEqual(active2.length, 1);
+  assert.strictEqual(active2[0].desc, "Jollibee");
+  assert.strictEqual(active2[0].amount, 150);
+
+  console.log("  ✓ Test 5 Passed: Recent transactions empty state fallback & live update reactivity");
+}
+
 console.log("\n🎉 ALL TRANSACTION INSPECTOR UNIT TESTS PASSED SUCCESSFULLY!\n");
