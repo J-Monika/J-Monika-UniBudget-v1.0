@@ -3618,6 +3618,7 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
     if (el("#uAmount")) el("#uAmount").value = "";
     if (el("#uDesc")) el("#uDesc").value = "";
     if (el("#uDueDate")) el("#uDueDate").value = "";
+    setUtangType("UTANG_GIVEN");
   }
 
   function openUtangAdd() {
@@ -3656,8 +3657,8 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
       save();
       render();
+      toast("Utang Recorded!");
       closeUtangAdd();
-      toast("🤝 Utang record added successfully!");
     } catch (err) {
       console.error("[saveUtangAdd] PeerLedger.addEntry failed:", err);
       toast("❌ Save failed: " + (err.message || "Unknown error"));

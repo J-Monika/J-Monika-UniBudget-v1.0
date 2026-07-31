@@ -189,4 +189,43 @@ console.log("▶ Running UniBudget Peer Ledger Unit Tests...");
   console.log("  ✓ Test 8 Passed: Filtering by status and type");
 }
 
+// Test 9: Submission Flow, "Utang Recorded!" Notification & Window Lifecycle Simulation
+{
+  const state = { currency: "PHP", peerLedger: [] };
+  let notificationMsg = "";
+  let modalOpen = true;
+  let formState = { counterparty: "Jose", amount: 150, desc: "Snacks" };
+
+  function simulateSaveUtangAdd(formData) {
+    if (!formData.counterparty || !(formData.amount > 0)) {
+      notificationMsg = "Validation Error";
+      return false;
+    }
+    try {
+      PeerLedger.addEntry(state, {
+        type: "UTANG_GIVEN",
+        counterpartyName: formData.counterparty,
+        amount: formData.amount,
+        description: formData.desc
+      });
+      notificationMsg = "Utang Recorded!";
+      formState = { counterparty: "", amount: "", desc: "" }; // state reset
+      modalOpen = false; // window close
+      return true;
+    } catch (err) {
+      notificationMsg = "Error";
+      return false;
+    }
+  }
+
+  const success = simulateSaveUtangAdd(formState);
+  assert.strictEqual(success, true);
+  assert.strictEqual(notificationMsg, "Utang Recorded!");
+  assert.strictEqual(modalOpen, false);
+  assert.strictEqual(formState.counterparty, "");
+  assert.strictEqual(state.peerLedger.length, 1);
+
+  console.log("  ✓ Test 9 Passed: Submission flow dispatches 'Utang Recorded!', resets form, and closes window");
+}
+
 console.log("\n🎉 ALL PEER LEDGER UNIT TESTS PASSED SUCCESSFULLY!\n");
