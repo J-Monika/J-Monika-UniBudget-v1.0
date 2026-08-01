@@ -2281,16 +2281,21 @@
   }
 
   // ---------- Formatting ----------
-  function sym(){ return CURRENCIES[state.currency] || "₱"; }
+  function sym(){ return (state && state.currency && CURRENCIES[state.currency]) || "₱"; }
   function fmt(n){
+    if (typeof n !== "number" || isNaN(n)) n = 0;
     var neg = n < 0;
     var s = Math.abs(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
     return (neg ? "−" : "") + sym() + s;
   }
   function catIcon(name, type){
     var list = type === "income" ? INCOME_CATS : EXPENSE_CATS;
-    for (var i=0;i<list.length;i++) if (list[i].name === name) return list[i].icon;
-    return "📦";
+    if (Array.isArray(list)) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].name === name) return list[i].icon;
+      }
+    }
+    return type === "income" ? "💸" : "📦";
   }
 
   // ---------- Elements ----------
@@ -2300,7 +2305,11 @@
   // ---------- Render ----------
   function activeTxns(){
     if (!state || !Array.isArray(state.txns)) return [];
-    return state.txns.filter(function(t){ return t && !t.deleted; });
+    return state.txns.filter(function(t){
+      if (!t) return false;
+      var isDel = t.deleted === true || t.deleted === "true" || t.deleted === 1;
+      return !isDel;
+    });
   }
   function render(){
     if (!state) return;
