@@ -220,8 +220,8 @@ const harness = createTestHarness();
   // Empty state check
   const active1 = state.txns.filter(t => !t.deleted);
   assert.strictEqual(active1.length, 0);
-  const emptyStateHtml = '<div class="empty"><div class="big">🧾</div>No recent transactions found.<br>Add your first record to get started.</div>';
-  assert.ok(emptyStateHtml.includes("No recent transactions found"));
+  const emptyStateHtml = '<div class="empty"><div class="big">🧾</div>No transactions logged yet.<br>Add your first record above!</div>';
+  assert.ok(emptyStateHtml.includes("No transactions logged yet"));
 
   // Add transaction -> State updates immediately
   const t1 = harness.addManualTxn(state, "Jollibee", 150, "expense", "Food & Dining", Date.now());

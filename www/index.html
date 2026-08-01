@@ -2284,91 +2284,113 @@
   var typeVal = "expense";
 
   // ---------- Render ----------
-  function activeTxns(){ return state.txns.filter(function(t){ return !t.deleted; }); }
+  function activeTxns(){
+    if (!state || !Array.isArray(state.txns)) return [];
+    return state.txns.filter(function(t){ return t && !t.deleted; });
+  }
   function render(){
+    if (!state) return;
     var income = 0, spent = 0, perCat = {};
     activeTxns().forEach(function(t){
-      if (t.type === "income") income += t.amount;
-      else { spent += t.amount; perCat[t.cat] = (perCat[t.cat]||0) + t.amount; }
+      var amt = Number(t.amount) || 0;
+      var cName = t.cat || "Other";
+      if (t.type === "income") income += amt;
+      else { spent += amt; perCat[cName] = (perCat[cName]||0) + amt; }
     });
     var balance = income - spent;
 
     var balEl = el("#balance");
-    balEl.textContent = fmt(balance);
-    balEl.classList.toggle("neg", balance < 0);
-    el("#income").textContent = fmt(income);
-    el("#spent").textContent = fmt(spent);
+    if (balEl) {
+      balEl.textContent = fmt(balance);
+      balEl.classList.toggle("neg", balance < 0);
+    }
+    var incEl = el("#income"); if (incEl) incEl.textContent = fmt(income);
+    var spEl = el("#spent"); if (spEl) spEl.textContent = fmt(spent);
 
     // Category bars
-    var cats = el("#cats"); cats.innerHTML = "";
-    EXPENSE_CATS.forEach(function(c){
-      var used = perCat[c.name] || 0;
-      var limit = state.limits[c.name] || 0;
-      var pct = limit > 0 ? Math.min(100, (used/limit)*100) : 0;
-      var over = limit > 0 && used > limit;
-      var warn = limit > 0 && !over && used >= limit*0.85;
-      var figClass = over ? "over" : (warn ? "warn" : "");
-      var barClass = over ? "over" : (warn ? "warn" : "");
-      var figText = limit > 0
-        ? '<span class="spent-part num">'+fmt(used)+'</span> / '+fmt(limit)
-        : '<span class="spent-part num">'+fmt(used)+'</span>';
-      var row = document.createElement("div");
-      row.className = "cat";
-      row.innerHTML =
-        '<div class="cat-top">'+
-          '<div class="cat-name"><span>'+c.icon+'</span>'+c.name+'</div>'+
-          '<div class="cat-fig '+figClass+'">'+figText+'</div>'+
-        '</div>'+
-        '<div class="bar"><span class="'+barClass+'" style="width:'+pct+'%"></span></div>';
-      cats.appendChild(row);
-    });
-
-    // Transactions
-    var tx = el("#txns"); tx.innerHTML = "";
-    var list = activeTxns();
-    if (!list.length){
-      tx.innerHTML = '<div class="empty"><div class="big">🧾</div>No recent transactions found.<br>Add your first record to get started.</div>';
-    } else {
-      var sorted = list.slice().sort(function(a,b){ return b.ts - a.ts; });
-      sorted.forEach(function(t){
-        var isInc = t.type === "income";
-        var isAuto = (t.source_type && t.source_type.indexOf("AUTOMATED") === 0) || t.source === "gcash-auto";
-        var badgeHtml = isAuto
-          ? '<span class="source-badge auto" title="Scanned automatically">⚡ Auto</span>'
-          : '<span class="source-badge manual" title="Manual entry">✏️ Manual</span>';
-
+    var cats = el("#cats");
+    if (cats) {
+      cats.innerHTML = "";
+      EXPENSE_CATS.forEach(function(c){
+        var used = perCat[c.name] || 0;
+        var limit = (state.limits && state.limits[c.name]) || 0;
+        var pct = limit > 0 ? Math.min(100, (used/limit)*100) : 0;
+        var over = limit > 0 && used > limit;
+        var warn = limit > 0 && !over && used >= limit*0.85;
+        var figClass = over ? "over" : (warn ? "warn" : "");
+        var barClass = over ? "over" : (warn ? "warn" : "");
+        var figText = limit > 0
+          ? '<span class="spent-part num">'+fmt(used)+'</span> / '+fmt(limit)
+          : '<span class="spent-part num">'+fmt(used)+'</span>';
         var row = document.createElement("div");
-        row.className = "txn";
-        row.style.cursor = "pointer";
+        row.className = "cat";
         row.innerHTML =
-          '<div class="ic '+(isInc?"inc":"exp")+'">'+(isInc?"↓":"↑")+'</div>'+
-          '<div class="desc"><div class="t">'+esc(t.desc)+badgeHtml+'</div><div class="s">'+esc(t.cat)+'</div></div>'+
-          '<div class="amt num '+(isInc?"inc":"exp")+'">'+(isInc?"+":"−")+fmt(t.amount).replace("−","")+'</div>'+
-          '<button class="del" title="Delete" aria-label="Delete transaction">'+
-            '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'+
-          '</button>';
-
-        row.addEventListener("click", function(){ openInspector(t.id); });
-        row.querySelector(".del").addEventListener("click", function(e){ e.stopPropagation(); removeTxn(t.id); });
-        tx.appendChild(row);
+          '<div class="cat-top">'+
+            '<div class="cat-name"><span>'+c.icon+'</span>'+c.name+'</div>'+
+            '<div class="cat-fig '+figClass+'">'+figText+'</div>'+
+          '</div>'+
+          '<div class="bar"><span class="'+barClass+'" style="width:'+pct+'%"></span></div>';
+        cats.appendChild(row);
       });
     }
 
+    // Transactions
+    var tx = el("#txns");
+    if (tx) {
+      tx.innerHTML = "";
+      var list = activeTxns();
+      if (!list.length){
+        tx.innerHTML = '<div class="empty"><div class="big">🧾</div>No transactions logged yet.<br>Add your first record above!</div>';
+      } else {
+        var sorted = list.slice().sort(function(a,b){ return (b.ts || 0) - (a.ts || 0); });
+        sorted.forEach(function(t){
+          if (!t) return;
+          var tDesc = t.desc || "Untitled Transaction";
+          var tCat = t.cat || (t.type === "income" ? "Allowance & Aid" : "Other");
+          var tAmt = Number(t.amount) || 0;
+          var isInc = t.type === "income";
+          var isAuto = (t.source_type && t.source_type.indexOf("AUTOMATED") === 0) || t.source === "gcash-auto";
+          var badgeHtml = isAuto
+            ? '<span class="source-badge auto" title="Scanned automatically">⚡ Auto</span>'
+            : '<span class="source-badge manual" title="Manual entry">✏️ Manual</span>';
+          var catIconStr = catIcon(tCat, t.type);
+
+          var row = document.createElement("div");
+          row.className = "txn";
+          row.style.cursor = "pointer";
+          row.innerHTML =
+            '<div class="ic '+(isInc?"inc":"exp")+'">'+(isInc?"↓":"↑")+'</div>'+
+            '<div class="desc"><div class="t">'+esc(tDesc)+badgeHtml+'</div><div class="s">'+catIconStr+' '+esc(tCat)+'</div></div>'+
+            '<div class="amt num '+(isInc?"inc":"exp")+'">'+(isInc?"+":"−")+fmt(tAmt).replace("−","")+'</div>'+
+            '<button class="del" title="Delete" aria-label="Delete transaction">'+
+              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'+
+            '</button>';
+
+          row.addEventListener("click", function(){ openInspector(t.id); });
+          var delBtn = row.querySelector(".del");
+          if (delBtn) {
+            delBtn.addEventListener("click", function(e){ e.stopPropagation(); removeTxn(t.id); });
+          }
+          tx.appendChild(row);
+        });
+      }
+    }
+
     // update currency symbols
-    el("#amtSym").textContent = sym();
+    var amtSymEl = el("#amtSym"); if (amtSymEl) amtSymEl.textContent = sym();
 
     // Petsa de Peligro forecaster + gamification chips
-    renderForecast();
-    renderGameChips();
+    try { renderForecast(); } catch(e) { console.error("[render] forecast failed:", e); }
+    try { renderGameChips(); } catch(e) { console.error("[render] game chips failed:", e); }
 
     // In-app notification warning banners
-    renderNotificationBanners();
+    try { renderNotificationBanners(); } catch(e) { console.error("[render] notification banners failed:", e); }
 
     // Render Utang / Pa-Suyo tracker
-    renderUtang();
+    try { renderUtang(); } catch(e) { console.error("[render] utang failed:", e); }
 
     // Render Subdivided Interactive Donut Chart
-    renderDonutChart();
+    try { renderDonutChart(); } catch(e) { console.error("[render] donut chart failed:", e); }
   }
 
   // ---------- Donut Chart & Dynamic Color Logic ----------
@@ -2622,10 +2644,32 @@
     save(); render();
     toast("Transaction deleted");
   }
+  async function syncNow(){
+    toast("🔄 Synchronizing transactions...");
+    try {
+      if (window.Cloud && window.Cloud.enabled && typeof window.Cloud.pull === "function") {
+        var changed = await window.Cloud.pull();
+        state = loadState();
+        render();
+        toast(changed ? "✅ Cloud sync complete! Updated records." : "✅ Cloud sync complete! Up to date.");
+      } else {
+        state = loadState();
+        render();
+        toast("✅ Synced with local storage ✓");
+      }
+    } catch (err) {
+      console.error("[syncNow] Error:", err);
+      toast("⚠️ Sync failed: " + (err.message || "Unknown error"));
+    }
+  }
+
   function clearAll(){
-    if (!activeTxns().length){ toast("Nothing to clear"); return; }
+    var list = activeTxns();
+    if (!list.length){ toast("Nothing to clear"); return; }
     if (!confirm("Delete ALL transactions? This cannot be undone.")) return;
-    state.txns.forEach(function(t){ if (!t.deleted){ t.deleted = true; t.updated_at = now(); } });
+    if (state && Array.isArray(state.txns)) {
+      state.txns.forEach(function(t){ if (t && !t.deleted){ t.deleted = true; t.updated_at = now(); } });
+    }
     save(); render();
     toast("All transactions cleared");
   }
@@ -3777,9 +3821,8 @@
     }
   });
   safeOn("#clearAll", "click", clearAll);
-  var syncFn = function(){ save(); toast("Saved to this device ✓"); };
-  safeOn("#syncBtn", "click", syncFn);
-  safeOn("#syncNow", "click", syncFn);
+  safeOn("#syncBtn", "click", syncNow);
+  safeOn("#syncNow", "click", syncNow);
 
   // ---------- Multi-wallet auto-ingest (GCash · Maya · ShopeePay · GrabPay) ----------
   // Called by the native Android listener with a raw notification/SMS body.
