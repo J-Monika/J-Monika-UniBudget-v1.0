@@ -2620,6 +2620,7 @@
   // ---------- Category dropdown ----------
   function fillCategories(){
     var sel = el("#category");
+    if (!sel) return;
     var list = typeVal === "income" ? INCOME_CATS : EXPENSE_CATS;
     var prev = sel.value;
     sel.innerHTML = "";
@@ -2628,8 +2629,12 @@
       o.value = c.name; o.textContent = c.icon + "  " + c.name;
       sel.appendChild(o);
     });
-    // keep selection if still valid
-    if (prev && list.some(function(c){ return c.name === prev; })) sel.value = prev;
+    // Keep selection if valid in new list, otherwise default to first item
+    if (prev && list.some(function(c){ return c.name === prev; })) {
+      sel.value = prev;
+    } else {
+      sel.selectedIndex = 0;
+    }
   }
 
   // ---------- Actions ----------
@@ -2638,12 +2643,22 @@
     var descInput = el("#desc");
     var amountInput = el("#amount");
     var catInput = el("#category");
+
     var desc = descInput ? descInput.value.trim() : "";
-    var amount = amountInput ? parseFloat(amountInput.value) : 0;
+    var rawAmountStr = amountInput ? String(amountInput.value || "").replace(/[^0-9.]/g, "") : "";
+    var amount = parseFloat(rawAmountStr);
     var cat = (catInput && catInput.value) || (typeVal === "income" ? "Allowance & Aid" : "Other");
 
-    if (!desc){ toast("Add a description first"); if (descInput) descInput.focus(); return; }
-    if (!(amount > 0)){ toast("Enter an amount greater than 0"); if (amountInput) amountInput.focus(); return; }
+    if (!desc){
+      toast("Add a description first");
+      if (descInput) descInput.focus();
+      return;
+    }
+    if (!(amount > 0) || isNaN(amount)){
+      toast("Enter an amount greater than 0");
+      if (amountInput) amountInput.focus();
+      return;
+    }
 
     var newTxn = {
       id: id(),
@@ -2672,8 +2687,11 @@
     var formEl = el("#addForm");
     if (formEl) formEl.reset();
     fillCategories();
+
     var suggestEl = el("#suggest");
     if (suggestEl) suggestEl.classList.remove("show");
+    pendingSuggest = null;
+
     toast(typeVal === "income" ? "Income added ✓" : "Expense added ✓");
     if (descInput) descInput.focus();
   }
@@ -2718,12 +2736,15 @@
   // ---------- Type toggle ----------
   function setType(t){
     typeVal = t;
-    el("#btnExp").className = t==="expense" ? "on-exp" : "";
-    el("#btnInc").className = t==="income" ? "on-inc" : "";
+    var btnExp = el("#btnExp");
+    var btnInc = el("#btnInc");
+    if (btnExp) btnExp.className = t === "expense" ? "on-exp" : "";
+    if (btnInc) btnInc.className = t === "income" ? "on-inc" : "";
     fillCategories();
+    updateSuggest();
   }
 
-  // ---------- AI suggestion ----------
+  // ---------- AI suggestion & Smart Auto-Categorization ----------
   // Returns a category name for a lowercased text blob, or null.
   function suggestCategory(text){
     for (var i=0;i<KEYWORDS.length;i++){
@@ -2735,20 +2756,39 @@
   }
   var pendingSuggest = null;
   function updateSuggest(){
-    var d = el("#desc").value.toLowerCase();
+    var descEl = el("#desc");
+    var d = descEl ? descEl.value.toLowerCase().trim() : "";
     var box = el("#suggest");
-    if (typeVal !== "expense" || d.length < 2){ box.classList.remove("show"); pendingSuggest = null; return; }
+    if (typeVal !== "expense" || d.length < 2){
+      if (box) box.classList.remove("show");
+      pendingSuggest = null;
+      return;
+    }
     var found = suggestCategory(d);
-    if (found && found !== el("#category").value){
+    if (found){
       pendingSuggest = found;
-      el("#suggestText").innerHTML = "✨ Looks like <b>" + esc(found) + "</b>";
-      box.classList.add("show");
+      var sel = el("#category");
+      if (sel && sel.value !== found) {
+        sel.value = found;
+      }
+      if (box) {
+        var suggestTxt = el("#suggestText");
+        if (suggestTxt) suggestTxt.innerHTML = "✨ Matched category: <b>" + esc(found) + "</b>";
+        box.classList.add("show");
+      }
     } else {
-      box.classList.remove("show"); pendingSuggest = null;
+      if (box) box.classList.remove("show");
+      pendingSuggest = null;
     }
   }
   function applySuggest(){
-    if (pendingSuggest){ el("#category").value = pendingSuggest; el("#suggest").classList.remove("show"); pendingSuggest = null; }
+    if (pendingSuggest){
+      var sel = el("#category");
+      if (sel) sel.value = pendingSuggest;
+      var box = el("#suggest");
+      if (box) box.classList.remove("show");
+      pendingSuggest = null;
+    }
   }
 
   // ---------- Goals modal ----------
