@@ -352,9 +352,31 @@
     getFilteredEntries: function (state, statusFilter, typeFilter) {
       this.normalizeState(state);
       return state.peerLedger.filter(function (entry) {
-        if (entry.deleted) return false;
-        if (statusFilter && statusFilter !== "ALL" && entry.status !== statusFilter) return false;
-        if (typeFilter && typeFilter !== "ALL" && entry.type !== typeFilter) return false;
+        if (!entry || entry.deleted) return false;
+
+        // Status filter handling: "UNSETTLED" matches UNSETTLED or PARTIALLY_SETTLED
+        if (statusFilter && statusFilter !== "ALL") {
+          var sf = String(statusFilter).toUpperCase();
+          if (sf === "UNSETTLED") {
+            if (entry.status === "SETTLED") return false;
+          } else if (entry.status !== sf) {
+            return false;
+          }
+        }
+
+        // Type filter handling (supports OWED_TO_ME and I_OWE chip filters)
+        if (typeFilter && typeFilter !== "ALL") {
+          var t = (entry.type || "").toUpperCase();
+          var tf = String(typeFilter).toUpperCase();
+          if (tf === "OWED_TO_ME") {
+            if (t !== "UTANG_GIVEN" && t !== "PA_SUYO") return false;
+          } else if (tf === "I_OWE") {
+            if (t !== "UTANG_TAKEN") return false;
+          } else if (t !== tf) {
+            return false;
+          }
+        }
+
         return true;
       });
     }

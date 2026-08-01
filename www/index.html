@@ -4402,29 +4402,29 @@ document.addEventListener("click", function(){ el("#menuPop").classList.remove("
 
     // Filter active entries
     var filteredEntries = (state.peerLedger || []).filter(function(e) {
-      if (e.deleted) return false;
+      if (!e || e.deleted) return false;
 
       // Filter by search query
       if (utangSearchQuery) {
-        var q = utangSearchQuery.toLowerCase();
+        var q = utangSearchQuery.toLowerCase().trim();
         var nameMatch = (e.counterpartyName || "").toLowerCase().indexOf(q) !== -1;
         var descMatch = (e.description || "").toLowerCase().indexOf(q) !== -1;
-        if (!nameMatch && !descMatch) return false;
+        var typeMatch = (e.type || "").toLowerCase().indexOf(q) !== -1;
+        if (!nameMatch && !descMatch && !typeMatch) return false;
       }
+
+      var eType = (e.type || "").toUpperCase();
+      var eStatus = (e.status || "").toUpperCase();
 
       // Filter by chip mode
       if (utangFilterMode === "OWED_TO_ME") {
-        if (e.type !== "UTANG_GIVEN" && e.type !== "PA_SUYO") return false;
-        if (e.status === "SETTLED" && !utangSearchQuery) return false;
+        if (eType !== "UTANG_GIVEN" && eType !== "PA_SUYO") return false;
       } else if (utangFilterMode === "I_OWE") {
-        if (e.type !== "UTANG_TAKEN") return false;
-        if (e.status === "SETTLED" && !utangSearchQuery) return false;
+        if (eType !== "UTANG_TAKEN") return false;
       } else if (utangFilterMode === "UNSETTLED") {
-        if (e.status !== "UNSETTLED" && e.status !== "PARTIALLY_SETTLED") return false;
-      } else {
-        // ALL
-        if (e.status === "SETTLED" && !utangSearchQuery) return false;
+        if (eStatus === "SETTLED") return false;
       }
+      // "ALL" displays all active entries (both unsettled & settled)
 
       return true;
     });

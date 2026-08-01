@@ -344,4 +344,34 @@ console.log("▶ Running UniBudget Peer Ledger Unit Tests...");
   console.log("  ✓ Test 12 Passed: Automated overdue notification evaluation, 24-hour throttling, and days overdue calculations");
 }
 
+// Test 13: Summary Filter Buttons (ALL, OWED_TO_ME, I_OWE, UNSETTLED)
+{
+  const state = { currency: "PHP", peerLedger: [] };
+  const e1 = PeerLedger.addEntry(state, { type: "UTANG_GIVEN", counterpartyName: "Juan", amount: 500 });
+  const e2 = PeerLedger.addEntry(state, { type: "UTANG_TAKEN", counterpartyName: "Maria", amount: 300 });
+  const e3 = PeerLedger.addEntry(state, { type: "PA_SUYO", counterpartyName: "Jose", amount: 150 });
+  
+  // Settle e3
+  PeerLedger.settleEntry(state, e3.id, 150, false);
+
+  // 1. ALL filter button
+  const allEntries = PeerLedger.getFilteredEntries(state, "ALL", "ALL");
+  assert.strictEqual(allEntries.length, 3, "ALL filter should include all 3 non-deleted entries (unsettled & settled)");
+
+  // 2. OWED_TO_ME filter button
+  const owedToMe = PeerLedger.getFilteredEntries(state, "ALL", "OWED_TO_ME");
+  assert.strictEqual(owedToMe.length, 2, "OWED_TO_ME should return UTANG_GIVEN (e1) and PA_SUYO (e3)");
+
+  // 3. I_OWE filter button
+  const iOwe = PeerLedger.getFilteredEntries(state, "ALL", "I_OWE");
+  assert.strictEqual(iOwe.length, 1, "I_OWE should return UTANG_TAKEN (e2)");
+  assert.strictEqual(iOwe[0].id, e2.id);
+
+  // 4. UNSETTLED filter button
+  const unsettled = PeerLedger.getFilteredEntries(state, "UNSETTLED", "ALL");
+  assert.strictEqual(unsettled.length, 2, "UNSETTLED should return 2 active entries (e1, e2)");
+
+  console.log("  ✓ Test 13 Passed: Summary Filter Buttons (ALL, OWED_TO_ME, I_OWE, UNSETTLED) for Utang transactions");
+}
+
 console.log("\n🎉 ALL PEER LEDGER UNIT TESTS PASSED SUCCESSFULLY!\n");
