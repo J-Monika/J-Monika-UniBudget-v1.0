@@ -320,6 +320,20 @@
   .empty .empty-ic { font-size: 34px; margin-bottom: 2px; }
   .empty .empty-title { font-weight: 800; font-size: 15px; color: var(--ink); }
   .empty .empty-sub { font-size: 13px; color: var(--muted); font-weight: 600; }
+  /* ---------- Donut Chart Legend ---------- */
+  .donut-legend {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center;
+    margin-top: 14px; width: 100%; box-sizing: border-box;
+  }
+  .legend-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 700; color: var(--ink);
+    padding: 6px 12px; border-radius: 20px; background: var(--page);
+    border: 1px solid var(--line); transition: transform .15s, background .15s;
+  }
+  .legend-item:hover { transform: translateY(-1px); background: var(--accent-soft); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .legend-val { font-weight: 800; }
   /* ---------- Visual Source Indicators & Inspector Modal ---------- */
   .source-badge {
     display: inline-flex; align-items: center; gap: 3px;
@@ -1215,16 +1229,18 @@
   <!-- ===== INTERACTIVE SUBDIVIDED DONUT CHART SECTION ===== -->
   <section class="card donut-card" id="donutSection">
     <div class="sec-head" style="margin-bottom:2px;">
-      <h2>📊 Spending Overview</h2>
+      <h2>📊 Financial &amp; Spending Overview</h2>
       <span class="side link" id="donutResetColors" style="font-size:12px;">Reset Colors</span>
     </div>
-    <div class="donut-wrap" style="position:relative; width:100%; display:flex; justify-content:center; align-items:center; padding:12px 0;">
+    <div class="donut-wrap" style="position:relative; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:12px 0;">
       <svg id="donutSvg" viewBox="0 0 200 200" width="220" height="220" style="display:block; overflow:visible;">
         <circle cx="100" cy="100" r="75" fill="none" stroke="var(--track)" stroke-width="22" />
         <g id="donutPaths"></g>
-        <text x="100" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="var(--muted)" font-family="inherit">Total Balance</text>
-        <text x="100" y="114" text-anchor="middle" font-size="19" font-weight="800" fill="var(--ink)" class="num" id="donutCenterBalance" font-family="inherit">₱0.00</text>
+        <text x="100" y="88" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)" font-family="inherit">Total Balance</text>
+        <text x="100" y="112" text-anchor="middle" font-size="18" font-weight="800" fill="var(--ink)" class="num" id="donutCenterBalance" font-family="inherit">₱0.00</text>
       </svg>
+      <!-- Interactive Financial Breakdown Legend -->
+      <div id="donutLegend" class="donut-legend"></div>
       <!-- Floating interactive popover tooltip -->
       <div id="chartPopover" class="chart-popover">
         <div class="pop-head"><span id="popIcon">🧺</span> <span id="popName">Groceries</span></div>
@@ -2457,28 +2473,47 @@
   function renderDonutChart() {
     var svgGroup = el("#donutPaths");
     var centerVal = el("#donutCenterBalance");
+    var legendEl = el("#donutLegend");
     if (!svgGroup) return;
     svgGroup.innerHTML = "";
 
     var income = 0, spent = 0, perCat = {};
     activeTxns().forEach(function(t){
-      if (t.type === "income") income += t.amount;
-      else { spent += t.amount; perCat[t.cat] = (perCat[t.cat] || 0) + t.amount; }
+      if (!t) return;
+      var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
+      if (t.type === "income") {
+        income += amt;
+      } else {
+        spent += amt;
+        var catName = t.cat || "Other";
+        perCat[catName] = (perCat[catName] || 0) + amt;
+      }
     });
+
     var balance = income - spent;
     if (centerVal) centerVal.textContent = fmt(balance);
 
     var totalSum = income + spent;
+    var incPct = totalSum > 0 ? Math.round((income / totalSum) * 100) : 0;
+    var spPct = totalSum > 0 ? Math.round((spent / totalSum) * 100) : 0;
+
+    if (legendEl) {
+      legendEl.innerHTML =
+        '<div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span><span>Income:</span> <span class="legend-val" style="color:#10B981;">' + fmt(income) + '</span> <span style="font-size:11px; opacity:0.8;">(' + incPct + '%)</span></div>' +
+        '<div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span><span>Spent:</span> <span class="legend-val" style="color:#EF4444;">' + fmt(spent) + '</span> <span style="font-size:11px; opacity:0.8;">(' + spPct + '%)</span></div>' +
+        '<div class="legend-item"><span class="legend-dot" style="background:#4F46E5;"></span><span>Total Balance:</span> <span class="legend-val" style="color:var(--ink);">' + fmt(balance) + '</span></div>';
+    }
+
     if (totalSum <= 0) return;
 
-    var cx = 100, cy = 100, r = 75, circumference = 2 * Math.PI * r;
+    var cx = 100, cy = 100, r = 75;
     var currentAngle = 0;
     var gapAngle = totalSum > income && Object.keys(perCat).length > 1 ? 2.5 : 0;
 
     // 1. Income Arc
     if (income > 0) {
-      var incPct = income / totalSum;
-      var incAngle = incPct * 360;
+      var incPctVal = income / totalSum;
+      var incAngle = incPctVal * 360;
       var startA = currentAngle;
       var endA = currentAngle + Math.max(0.5, incAngle - gapAngle);
 
@@ -2489,7 +2524,7 @@
       path.setAttribute("stroke-width", "22");
       path.setAttribute("fill", "none");
       path.addEventListener("click", function(e) {
-        openChartPopover("Income", income, incPct, true, e);
+        openChartPopover("Income", income, incPctVal, true, e);
       });
       svgGroup.appendChild(path);
       currentAngle += incAngle;
