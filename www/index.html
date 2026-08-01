@@ -2429,7 +2429,7 @@
     try { renderUtang(); } catch(e) { console.error("[render] utang failed:", e); }
 
     // Render Subdivided Interactive Donut Chart
-    try { renderDonutChart(); } catch(e) { console.error("[render] donut chart failed:", e); }
+    try { renderDonutChart(income, spent, balance, perCat); } catch(e) { console.error("[render] donut chart failed:", e); }
   }
 
   // ---------- Donut Chart & Dynamic Color Logic ----------
@@ -2470,27 +2470,29 @@
     ].join(" ");
   }
 
-  function renderDonutChart() {
+  function renderDonutChart(income, spent, balance, perCat) {
     var svgGroup = el("#donutPaths");
     var centerVal = el("#donutCenterBalance");
     var legendEl = el("#donutLegend");
     if (!svgGroup) return;
     svgGroup.innerHTML = "";
 
-    var income = 0, spent = 0, perCat = {};
-    activeTxns().forEach(function(t){
-      if (!t) return;
-      var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
-      if (t.type === "income") {
-        income += amt;
-      } else {
-        spent += amt;
-        var catName = t.cat || "Other";
-        perCat[catName] = (perCat[catName] || 0) + amt;
-      }
-    });
+    if (typeof income !== "number" || isNaN(income) || typeof spent !== "number" || isNaN(spent)) {
+      income = 0; spent = 0; perCat = {};
+      activeTxns().forEach(function(t){
+        if (!t) return;
+        var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
+        if (t.type === "income") {
+          income += amt;
+        } else {
+          spent += amt;
+          var catName = t.cat || "Other";
+          perCat[catName] = (perCat[catName] || 0) + amt;
+        }
+      });
+      balance = income - spent;
+    }
 
-    var balance = income - spent;
     if (centerVal) centerVal.textContent = fmt(balance);
 
     var totalSum = income + spent;
@@ -2510,37 +2512,28 @@
     var currentAngle = 0;
     var gapAngle = totalSum > income && Object.keys(perCat).length > 1 ? 2.5 : 0;
 
-    // 1. Income Arc
+    // 1. Income Arc or Full Circle
     if (income > 0) {
       var incPctVal = income / totalSum;
-      var incAngle = incPctVal * 360;
-      var startA = currentAngle;
-      var endA = currentAngle + Math.max(0.5, incAngle - gapAngle);
+      var color = getCategoryColor("Income", "income");
 
-      var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("class", "chart-sector");
-      path.setAttribute("d", describeArc(cx, cy, r, startA, endA));
-      path.setAttribute("stroke", getCategoryColor("Income", "income"));
-      path.setAttribute("stroke-width", "22");
-      path.setAttribute("fill", "none");
-      path.addEventListener("click", function(e) {
-        openChartPopover("Income", income, incPctVal, true, e);
-      });
-      svgGroup.appendChild(path);
-      currentAngle += incAngle;
-    }
-
-    // 2. Subdivided Expense Category Arcs
-    var cats = Object.keys(perCat);
-    cats.forEach(function(catName) {
-      var catAmt = perCat[catName];
-      if (catAmt > 0) {
-        var catPct = catAmt / totalSum;
-        var expPctOfTotalSpent = spent > 0 ? (catAmt / spent) : 0;
-        var catAngle = catPct * 360;
+      if (incPctVal >= 0.999) {
+        var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("class", "chart-sector");
+        circle.setAttribute("cx", cx);
+        circle.setAttribute("cy", cy);
+        circle.setAttribute("r", r);
+        circle.setAttribute("stroke", color);
+        circle.setAttribute("stroke-width", "22");
+        circle.setAttribute("fill", "none");
+        circle.addEventListener("click", function(e) {
+          openChartPopover("Income", income, 1.0, true, e);
+        });
+        svgGroup.appendChild(circle);
+      } else {
+        var incAngle = incPctVal * 360;
         var startA = currentAngle;
-        var endA = currentAngle + Math.max(0.5, catAngle - gapAngle);
-        var color = getCategoryColor(catName, "expense");
+        var endA = currentAngle + Math.max(0.5, incAngle - gapAngle);
 
         var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "chart-sector");
@@ -2549,10 +2542,52 @@
         path.setAttribute("stroke-width", "22");
         path.setAttribute("fill", "none");
         path.addEventListener("click", function(e) {
-          openChartPopover(catName, catAmt, expPctOfTotalSpent, false, e);
+          openChartPopover("Income", income, incPctVal, true, e);
         });
         svgGroup.appendChild(path);
-        currentAngle += catAngle;
+        currentAngle += incAngle;
+      }
+    }
+
+    // 2. Subdivided Expense Category Arcs or Full Circle
+    var cats = Object.keys(perCat);
+    cats.forEach(function(catName) {
+      var catAmt = perCat[catName];
+      if (catAmt > 0) {
+        var catPct = catAmt / totalSum;
+        var expPctOfTotalSpent = spent > 0 ? (catAmt / spent) : 0;
+        var color = getCategoryColor(catName, "expense");
+
+        if (catPct >= 0.999) {
+          var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          circle.setAttribute("class", "chart-sector");
+          circle.setAttribute("cx", cx);
+          circle.setAttribute("cy", cy);
+          circle.setAttribute("r", r);
+          circle.setAttribute("stroke", color);
+          circle.setAttribute("stroke-width", "22");
+          circle.setAttribute("fill", "none");
+          circle.addEventListener("click", function(e) {
+            openChartPopover(catName, catAmt, 1.0, false, e);
+          });
+          svgGroup.appendChild(circle);
+        } else {
+          var catAngle = catPct * 360;
+          var startA = currentAngle;
+          var endA = currentAngle + Math.max(0.5, catAngle - gapAngle);
+
+          var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("class", "chart-sector");
+          path.setAttribute("d", describeArc(cx, cy, r, startA, endA));
+          path.setAttribute("stroke", color);
+          path.setAttribute("stroke-width", "22");
+          path.setAttribute("fill", "none");
+          path.addEventListener("click", function(e) {
+            openChartPopover(catName, catAmt, expPctOfTotalSpent, false, e);
+          });
+          svgGroup.appendChild(path);
+          currentAngle += catAngle;
+        }
       }
     });
   }
