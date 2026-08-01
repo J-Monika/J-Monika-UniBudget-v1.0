@@ -2331,10 +2331,17 @@
     if (!state) return;
     var income = 0, spent = 0, perCat = {};
     activeTxns().forEach(function(t){
-      var amt = Number(t.amount) || 0;
-      var cName = t.cat || "Other";
-      if (t.type === "income") income += amt;
-      else { spent += amt; perCat[cName] = (perCat[cName]||0) + amt; }
+      if (!t) return;
+      var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
+      if (isNaN(amt)) amt = 0;
+      var isInc = (t.type || "").toLowerCase() === "income";
+      var cName = t.cat || (isInc ? "Allowance & Aid" : "Other");
+      if (isInc) {
+        income += amt;
+      } else {
+        spent += amt;
+        perCat[cName] = (perCat[cName] || 0) + amt;
+      }
     });
     var balance = income - spent;
 
@@ -2385,14 +2392,15 @@
         sorted.forEach(function(t){
           if (!t) return;
           var tDesc = t.desc || "Untitled Transaction";
-          var tCat = t.cat || (t.type === "income" ? "Allowance & Aid" : "Other");
-          var tAmt = Number(t.amount) || 0;
-          var isInc = t.type === "income";
+          var isInc = (t.type || "").toLowerCase() === "income";
+          var tCat = t.cat || (isInc ? "Allowance & Aid" : "Other");
+          var tAmt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
+          if (isNaN(tAmt)) tAmt = 0;
           var isAuto = (t.source_type && t.source_type.indexOf("AUTOMATED") === 0) || t.source === "gcash-auto";
           var badgeHtml = isAuto
             ? '<span class="source-badge auto" title="Scanned automatically">⚡ Auto</span>'
             : '<span class="source-badge manual" title="Manual entry">✏️ Manual</span>';
-          var catIconStr = catIcon(tCat, t.type);
+          var catIconStr = catIcon(tCat, isInc ? "income" : "expense");
 
           var row = document.createElement("div");
           row.className = "txn";
@@ -2429,7 +2437,7 @@
     try { renderUtang(); } catch(e) { console.error("[render] utang failed:", e); }
 
     // Render Subdivided Interactive Donut Chart
-    try { renderDonutChart(income, spent, balance, perCat); } catch(e) { console.error("[render] donut chart failed:", e); }
+    try { renderDonutChart(); } catch(e) { console.error("[render] donut chart failed:", e); }
   }
 
   // ---------- Donut Chart & Dynamic Color Logic ----------
@@ -2440,7 +2448,11 @@
 
     var spent = 0;
     activeTxns().forEach(function(t){
-      if (t.type === "expense" && t.cat === catName) spent += t.amount;
+      var isInc = (t.type || "").toLowerCase() === "income";
+      if (!isInc && t.cat === catName) {
+        var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
+        spent += amt;
+      }
     });
     var limit = (state.goals && state.goals[catName]) || (state.limits && state.limits[catName]) || 0;
     if (limit > 0) {
@@ -2470,29 +2482,30 @@
     ].join(" ");
   }
 
-  function renderDonutChart(income, spent, balance, perCat) {
+  function renderDonutChart() {
     var svgGroup = el("#donutPaths");
     var centerVal = el("#donutCenterBalance");
     var legendEl = el("#donutLegend");
     if (!svgGroup) return;
     svgGroup.innerHTML = "";
 
-    if (typeof income !== "number" || isNaN(income) || typeof spent !== "number" || isNaN(spent)) {
-      income = 0; spent = 0; perCat = {};
-      activeTxns().forEach(function(t){
-        if (!t) return;
-        var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
-        if (t.type === "income") {
-          income += amt;
-        } else {
-          spent += amt;
-          var catName = t.cat || "Other";
-          perCat[catName] = (perCat[catName] || 0) + amt;
-        }
-      });
-      balance = income - spent;
-    }
+    // Always compute authoritative metrics directly from activeTxns to prevent desync
+    var income = 0, spent = 0, perCat = {};
+    activeTxns().forEach(function(t){
+      if (!t) return;
+      var amt = typeof t.amount === "number" ? t.amount : (parseFloat(t.amount) || 0);
+      if (isNaN(amt)) amt = 0;
+      var isInc = (t.type || "").toLowerCase() === "income";
+      var catName = t.cat || (isInc ? "Allowance & Aid" : "Other");
+      if (isInc) {
+        income += amt;
+      } else {
+        spent += amt;
+        perCat[catName] = (perCat[catName] || 0) + amt;
+      }
+    });
 
+    var balance = income - spent;
     if (centerVal) centerVal.textContent = fmt(balance);
 
     var totalSum = income + spent;
@@ -2501,8 +2514,8 @@
 
     if (legendEl) {
       legendEl.innerHTML =
-        '<div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span><span>Income:</span> <span class="legend-val" style="color:#10B981;">' + fmt(income) + '</span> <span style="font-size:11px; opacity:0.8;">(' + incPct + '%)</span></div>' +
-        '<div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span><span>Spent:</span> <span class="legend-val" style="color:#EF4444;">' + fmt(spent) + '</span> <span style="font-size:11px; opacity:0.8;">(' + spPct + '%)</span></div>' +
+        '<div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span><span>Income:</span> <span class="legend-val" style="color:#10B981;">' + fmt(income) + '</span> <span style="font-size:11px; opacity:0.85;">(' + incPct + '%)</span></div>' +
+        '<div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span><span>Spent:</span> <span class="legend-val" style="color:#EF4444;">' + fmt(spent) + '</span> <span style="font-size:11px; opacity:0.85;">(' + spPct + '%)</span></div>' +
         '<div class="legend-item"><span class="legend-dot" style="background:#4F46E5;"></span><span>Total Balance:</span> <span class="legend-val" style="color:var(--ink);">' + fmt(balance) + '</span></div>';
     }
 
