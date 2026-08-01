@@ -2482,6 +2482,13 @@
     ].join(" ");
   }
 
+  function fmtPct(num, total) {
+    if (!total || total <= 0 || !num || num <= 0) return "0%";
+    var pct = (num / total) * 100;
+    var str = pct.toFixed(1).replace(/\.0$/, "");
+    return str + "%";
+  }
+
   function renderDonutChart() {
     var svgGroup = el("#donutPaths");
     var centerVal = el("#donutCenterBalance");
@@ -2506,16 +2513,19 @@
     });
 
     var balance = income - spent;
-    if (centerVal) centerVal.textContent = fmt(balance);
-
     var totalSum = income + spent;
-    var incPct = totalSum > 0 ? Math.round((income / totalSum) * 100) : 0;
-    var spPct = totalSum > 0 ? Math.round((spent / totalSum) * 100) : 0;
+
+    console.log('[PieChart Debug] Raw Metrics:', { income: income, spent: spent, balance: balance });
+    var incPctStr = fmtPct(income, totalSum);
+    var spPctStr = fmtPct(spent, totalSum);
+    console.log('[PieChart Debug] Formatted Data Payload:', { totalSum: totalSum, incPctStr: incPctStr, spPctStr: spPctStr });
+
+    if (centerVal) centerVal.textContent = fmt(balance);
 
     if (legendEl) {
       legendEl.innerHTML =
-        '<div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span><span>Income:</span> <span class="legend-val" style="color:#10B981;">' + fmt(income) + '</span> <span style="font-size:11px; opacity:0.85;">(' + incPct + '%)</span></div>' +
-        '<div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span><span>Spent:</span> <span class="legend-val" style="color:#EF4444;">' + fmt(spent) + '</span> <span style="font-size:11px; opacity:0.85;">(' + spPct + '%)</span></div>' +
+        '<div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span><span>Income:</span> <span class="legend-val" style="color:#10B981;">' + fmt(income) + '</span> <span style="font-size:11px; opacity:0.85;">(' + incPctStr + ')</span></div>' +
+        '<div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span><span>Spent:</span> <span class="legend-val" style="color:#EF4444;">' + fmt(spent) + '</span> <span style="font-size:11px; opacity:0.85;">(' + spPctStr + ')</span></div>' +
         '<div class="legend-item"><span class="legend-dot" style="background:#4F46E5;"></span><span>Total Balance:</span> <span class="legend-val" style="color:var(--ink);">' + fmt(balance) + '</span></div>';
     }
 
