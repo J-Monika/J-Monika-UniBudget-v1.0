@@ -280,7 +280,7 @@
   .bar > span.over { background: var(--spent); }
 
   /* ---------- Transactions ---------- */
-  .txns { padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .txns { padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 10px; min-height: 60px; width: 100%; box-sizing: border-box; }
   .txn {
     display: flex; align-items: center; gap: 14px;
     padding: 13px 14px; border-radius: 14px; background: var(--page);
@@ -312,7 +312,14 @@
   }
   .txn:hover .del { opacity: 1; }
   .txn .del:hover { color: var(--spent); background: rgba(220,38,38,.12); }
-  .empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
+  .empty {
+    text-align: center; color: var(--muted); padding: 28px 20px; font-size: 14px;
+    background: var(--page); border-radius: 16px; border: 1.5px dashed var(--line);
+    margin: 4px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  }
+  .empty .empty-ic { font-size: 34px; margin-bottom: 2px; }
+  .empty .empty-title { font-weight: 800; font-size: 15px; color: var(--ink); }
+  .empty .empty-sub { font-size: 13px; color: var(--muted); font-weight: 600; }
   /* ---------- Visual Source Indicators & Inspector Modal ---------- */
   .source-badge {
     display: inline-flex; align-items: center; gap: 3px;
@@ -1966,10 +1973,17 @@
     }
     if (!Array.isArray(s.txns)) s.txns = [];
     s.txns.forEach(function(t){
+      if (!t) return;
       if (!t.id) t.id = id();
       if (typeof t.ts !== "number") t.ts = now();
       if (typeof t.updated_at !== "number") t.updated_at = t.ts;
+      if (t.deleted === "false") t.deleted = false;
+      if (t.deleted === "true") t.deleted = true;
       if (typeof t.deleted !== "boolean") t.deleted = false;
+      if (typeof t.amount !== "number" || isNaN(t.amount)) t.amount = Number(t.amount) || 0;
+      if (!t.desc) t.desc = "Untitled Transaction";
+      if (!t.cat) t.cat = t.type === "income" ? "Allowance & Aid" : "Other";
+      if (t.type !== "income" && t.type !== "expense") t.type = "expense";
     });
     return s;
   }
@@ -2620,21 +2634,48 @@
 
   // ---------- Actions ----------
   function addTxn(e){
-    e.preventDefault();
-    var desc = el("#desc").value.trim();
-    var amount = parseFloat(el("#amount").value);
-    var cat = el("#category").value || (typeVal === "income" ? "Allowance & Aid" : "Other");
-    if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
-    if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
-    var newTxn = { id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false, source:"manual", source_type:"MANUAL", source_app_or_sender:null, raw_message_text:null, captured_at:null };
-    state.txns = (state.txns || []).concat(newTxn);
+    if (e && e.preventDefault) e.preventDefault();
+    var descInput = el("#desc");
+    var amountInput = el("#amount");
+    var catInput = el("#category");
+    var desc = descInput ? descInput.value.trim() : "";
+    var amount = amountInput ? parseFloat(amountInput.value) : 0;
+    var cat = (catInput && catInput.value) || (typeVal === "income" ? "Allowance & Aid" : "Other");
+
+    if (!desc){ toast("Add a description first"); if (descInput) descInput.focus(); return; }
+    if (!(amount > 0)){ toast("Enter an amount greater than 0"); if (amountInput) amountInput.focus(); return; }
+
+    var newTxn = {
+      id: id(),
+      desc: desc,
+      amount: Math.round(amount * 100) / 100,
+      type: typeVal,
+      cat: cat,
+      ts: now(),
+      updated_at: now(),
+      deleted: false,
+      source: "manual",
+      source_type: "MANUAL",
+      source_app_or_sender: null,
+      raw_message_text: null,
+      captured_at: null
+    };
+
+    if (!state) state = seedState();
+    if (!Array.isArray(state.txns)) state.txns = [];
+    state.txns.unshift(newTxn);
+
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "ADD_TRANSACTION");
-    save(); render();
-    el("#addForm").reset();
+    save();
+    render();
+
+    var formEl = el("#addForm");
+    if (formEl) formEl.reset();
     fillCategories();
-    el("#suggest").classList.remove("show");
+    var suggestEl = el("#suggest");
+    if (suggestEl) suggestEl.classList.remove("show");
     toast(typeVal === "income" ? "Income added ✓" : "Expense added ✓");
-    el("#desc").focus();
+    if (descInput) descInput.focus();
   }
   // Soft-delete (tombstone) so the deletion syncs to other devices instead of
   // reappearing on the next pull.
