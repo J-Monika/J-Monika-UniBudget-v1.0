@@ -143,7 +143,11 @@
   var pushTimer = null, pushing = false;
   function pushState(state) {
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(function () { flush(state); }, 700);
+    // Reduced debounce: 100ms instead of 700ms so the push lands well before
+    // any background pull can fire and overwrite the localStorage cache with
+    // stale cloud data (the original 700ms debounce was the primary cause of
+    // newly added transactions disappearing from Recent Transactions).
+    pushTimer = setTimeout(function () { pushTimer = null; flush(state); }, 100);
   }
   async function flush(stateMaybe) {
     if (pushing || !isOnline()) { if (!isOnline()) markSynced(false, "Offline"); return; }
@@ -156,7 +160,7 @@
       console.log("[Cloud Sync] Flushing local changes for user " + email + "...");
       var wmKey = pushWM(email);
       var lastPush = Number(localStorage.getItem(wmKey) || 0);
-      var changedTxns = (state.txns || []).filter(function (t) { return (t.updated_at || t.ts || 0) > lastPush; });
+      var changedTxns = (state.txns || []).filter(function (t) { return (t.updated_at || t.ts || 0) >= lastPush; });
       var changedPeer = (state.peerLedger || []).filter(function (p) { return (p.updatedAt || p.createdAt || 0) > lastPush; });
 
       if (changedTxns.length) {
@@ -222,8 +226,16 @@
         }
       }
 
+      // Merge-not-replace strategy: start byId from the CURRENT local cache
+      // (not just cloud rows). This preserves any transactions that were written
+      // locally but haven't been confirmed by Supabase yet (e.g., a txn added
+      // 100–700ms ago that is still mid-push). Cloud rows win on conflict via LWW
+      // (updated_at), but purely-local txns are retained.
       var cache = readCache(email) || { currency: "PHP", limits: {}, txns: [], peerLedger: [] };
-      var byId = {}; (cache.txns || []).forEach(function (t) { byId[t.id] = t; });
+      var byId = {};
+      // Seed byId with local cache first (lower priority)
+      (cache.txns || []).forEach(function (t) { byId[t.id] = t; });
+      // Overlay with cloud rows (higher priority via LWW)
       var maxU = isNaN(lastPull) ? 0 : lastPull;
       (res.data || []).forEach(function (r) {
         var incoming = txnFromRow(r);
@@ -253,7 +265,11 @@
       localStorage.setItem(wmKey, String(maxU));
       console.log("[Cloud Sync] Pull succeeded. Local state updated: " + changedLocal);
       markSynced(true);
-      if (changedLocal && window.UniBudget && window.UniBudget.reload) window.UniBudget.reload();
+      // Only trigger a UI reload if there are actual cloud changes AND no push
+      // is currently pending or in-flight. If a push is pending, the in-memory
+      // state is the authoritative source and a reload would overwrite it with
+      // the (stale) cache we just wrote, causing the new transaction to vanish.
+      if (changedLocal && !pushTimer && !pushing && window.UniBudget && window.UniBudget.reload) window.UniBudget.reload();
     } catch (e) {
       console.warn("[Cloud Sync] Pull failed (offline cache authoritative):", e.message || e);
       markSynced(false, "Sync Pending");

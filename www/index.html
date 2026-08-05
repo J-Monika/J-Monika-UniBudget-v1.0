@@ -1188,7 +1188,7 @@
 
       <section class="card">
         <div class="sec-head"><h2>➕ Add Record</h2></div>
-        <form id="addForm" autocomplete="off">
+        <form id="addForm" autocomplete="off" novalidate>
           <div class="field">
             <label for="desc">Description</label>
             <input id="desc" type="text" placeholder="e.g. Jollibee, GCash, Dorm Rent" />
@@ -2354,19 +2354,79 @@
 
   // ---------- Actions ----------
   function addTxn(e){
-    e.preventDefault();
-    var desc = el("#desc").value.trim();
-    var amount = parseFloat(el("#amount").value);
-    var cat = el("#category").value;
-    if (!desc){ toast("Add a description first"); el("#desc").focus(); return; }
-    if (!(amount > 0)){ toast("Enter an amount greater than 0"); el("#amount").focus(); return; }
-    state.txns.push({ id:id(), desc:desc, amount:Math.round(amount*100)/100, type:typeVal, cat:cat, ts:now(), updated_at:now(), deleted:false, source:"manual", source_type:"MANUAL", source_app_or_sender:null, raw_message_text:null, captured_at:null });
+    if (e && e.preventDefault) e.preventDefault();
+    var descInput = el("#desc");
+    var amountInput = el("#amount");
+    var catInput = el("#category");
+
+    var desc = descInput ? descInput.value.trim() : "";
+    var rawAmountStr = amountInput ? String(amountInput.value || "").replace(/[^0-9.]/g, "") : "";
+    var amount = parseFloat(rawAmountStr);
+    var cat = (catInput && catInput.value) || (typeVal === "income" ? "Allowance & Aid" : "Other");
+
+    if (!desc){
+      toast("Add a description first");
+      if (descInput) descInput.focus();
+      return;
+    }
+    if (!(amount > 0) || isNaN(amount)){
+      toast("Enter an amount greater than 0");
+      if (amountInput) amountInput.focus();
+      return;
+    }
+
+    var newTxn = {
+      id: id(),
+      desc: desc,
+      amount: Math.round(amount * 100) / 100,
+      type: typeVal,
+      cat: cat,
+      ts: now(),
+      updated_at: now(),
+      deleted: false,
+      source: "manual",
+      source_type: "MANUAL",
+      source_app_or_sender: null,
+      raw_message_text: null,
+      captured_at: null
+    };
+
+    if (!state) state = seedState();
+    if (!Array.isArray(state.txns)) state.txns = [];
+    // Immutably prepend new transaction to guarantee immediate UI reactivity
+    state.txns = [newTxn].concat(state.txns.filter(function(t){ return t && t.id !== newTxn.id; }));
+
     if (window.GamificationEngine) GamificationEngine.awardXp(state, "ADD_TRANSACTION");
-    save(); render();
-    el("#addForm").reset();
-    el("#suggest").classList.remove("show");
-    toast(typeVal === "income" ? "Income added ✓" : "Expense added ✓");
-    el("#desc").focus();
+    save();
+    render();
+
+    // --- Form reset & UI sync ---
+    var wasIncome = (typeVal === "income");
+    var formEl = el("#addForm");
+    if (formEl) formEl.reset();
+    // Re-sync the type toggle after reset (formEl.reset() clears input values
+    // but does NOT restore the active CSS class on type-toggle buttons, causing
+    // typeVal to drift out of sync with the button UI on subsequent submissions).
+    setType("expense");
+    fillCategories();
+
+    var suggestEl = el("#suggest");
+    if (suggestEl) suggestEl.classList.remove("show");
+    pendingSuggest = null;
+
+    toast(wasIncome ? "Income added ✓" : "Expense added ✓");
+
+    // Scroll the Recent Transactions section into view so the user can
+    // immediately see the newly added item (critical on mobile where the
+    // form occupies the full viewport and the list is below the fold).
+    setTimeout(function() {
+      var recentCard = el("#recentTxnsCard");
+      if (recentCard) {
+        recentCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
+
+    if (descInput) descInput.focus();
   }
   // Soft-delete (tombstone) so the deletion syncs to other devices instead of
   // reappearing on the next pull.
